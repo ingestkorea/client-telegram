@@ -1,0 +1,29 @@
+{
+  "name": "@ingestkorea/client-telegram",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "scripts": {
+    "build": "npm run clean && npm run build:cjs && npm run build:es && npm run build:types",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf ./dist-*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ingestkorea/client-telegram.git"
+  },
+  "author": "ingestkorea",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ingestkorea/client-telegram/issues"
+  },
+  "homepage": "https://github.com/ingestkorea/client-telegram#readme",
+  "dependencies": {
+    "@ingestkorea/util-error-handler": "^1.0.2",
+    "@ingestkorea/util-http-handler": "^0.8.0"
+  }
+}
