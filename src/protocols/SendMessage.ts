@@ -1,14 +1,11 @@
-import { IngestkoreaError, ingestkoreaErrorCodeChecker } from '@ingestkorea/util-error-handler';
-import { HttpRequest, HttpResponse, collectBodyString } from '@ingestkorea/util-http-handler';
+import { HttpRequest, HttpResponse } from '@ingestkorea/util-http-handler';
 import { TelegramClientResolvedConfig } from '../TelegramClient';
 import { SendMessageCommandInput, SendMessageCommandOutput } from '../commands/SendMessageCommand';
 import {
   SendMessageOutput,
-  Result,
-  From,
-  Chat,
-  Entities
+  Result, From, Chat, Entities
 } from '../models/SendMessage';
+import { parseBody, parseErrorBody } from './constants';
 
 export const serializeIngestkorea_restJson_SendMessageCommand = async (
   input: SendMessageCommandInput,
@@ -38,8 +35,7 @@ export const serializeIngestkorea_restJson_SendMessageCommand = async (
 export const deserializeIngestkorea_restJson_SendMessageCommand = async (
   output: HttpResponse
 ): Promise<SendMessageCommandOutput> => {
-  const { statusCode } = output;
-  if (statusCode >= 300) await parseErrorBody(output);
+  if (output.statusCode >= 300) await parseErrorBody(output);
   let data = await parseBody(output); //SendMessageOutput
   let contents: any = {};
   contents = deserializeIngestkorea_restJson_SendMessageOutput(data);
@@ -59,13 +55,14 @@ export const deserializeIngestkorea_restJson_SendMessageOutput = (output: any): 
 };
 
 export const deserializeIngestkorea_restJson_MessageResult = (output: any): Result => {
-  const { message_id, from, chat, date, text } = output;
+  const { message_id, from, chat, date, text, entities } = output;
   return {
     message_id: message_id != null ? message_id : undefined,
     from: from != null ? deserializeIngestkorea_restJson_MessageFrom(from) : undefined,
     chat: chat != null ? deserializeIngestkorea_restJson_MessageChat(chat) : undefined,
     date: date != null ? date : undefined,
     text: text != null ? text : undefined,
+    entities: entities != null ? deserializeIngestkorea_restJson_MessageEntities(entities) : undefined
   };
 };
 
@@ -90,31 +87,14 @@ export const deserializeIngestkorea_restJson_MessageChat = (output: any): Chat =
   };
 };
 
-const parseBody = async (output: HttpResponse): Promise<any> => {
-  const { statusCode, headers, body } = output;
-  const resolvedStatusCode = ingestkoreaErrorCodeChecker(statusCode) ? statusCode : 400;
-  const isValid = /application\/json/gi.exec(headers['content-type']) ? true : false;
-  if (!isValid) throw new IngestkoreaError({
-    code: resolvedStatusCode, type: 'Bad Request',
-    message: 'Invalid Request', description: 'response content-type is not applicaion/json'
+export const deserializeIngestkorea_restJson_MessageEntities = (output: any[]): Entities[] => {
+  const result: Entities[] = output.map(data => {
+    const { type, offset, length } = data;
+    return {
+      type: type != null ? type : undefined,
+      offset: offset != null ? offset : undefined,
+      length: length != null ? length : undefined,
+    };
   });
-  const data = await collectBodyString(body);
-  if (data.length) return JSON.parse(data);
-  return {};
-};
-
-const parseErrorBody = async (output: HttpResponse): Promise<void> => {
-  const { statusCode, headers, body } = output;
-  const resolvedStatusCode = ingestkoreaErrorCodeChecker(statusCode) ? statusCode : 400;
-  const isValid = /application\/json/gi.exec(headers['content-type']) ? true : false;
-  if (!isValid) throw new IngestkoreaError({
-    code: resolvedStatusCode, type: 'Bad Request',
-    message: 'Invalid Request', description: 'response content-type is not applicaion/json'
-  });
-  const data = await collectBodyString(body);
-  if (data.length) throw new IngestkoreaError({
-    code: resolvedStatusCode, type: 'Bad Request',
-    message: 'Invalid Request', description: JSON.parse(data)
-  });
-  throw new IngestkoreaError({ code: resolvedStatusCode, type: 'Bad Request', message: 'Invalid Request' });
+  return result;
 };

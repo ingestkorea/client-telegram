@@ -36,7 +36,7 @@ export interface Chat {
 };
 
 export interface Entities {
+  type?: string
   offset?: number
   length?: number
-  type?: string
 };

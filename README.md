@@ -55,7 +55,7 @@ const command = new SendMessageCommand(input);
 (async () => {
   try {
     const data = await client.send(command);
-    console.log(data)
+    console.dir(data, { depth: 4 })
   } catch (err){
     console.log(err)
   }
@@ -65,7 +65,7 @@ const command = new SendMessageCommand(input);
 #### Promises
 ```ts
 client.send(command)
-  .then(data => console.log(data))
+  .then(data => console.dir(data, { depth: 4 }))
   .catch(err => console.log(err));
 ```
 
