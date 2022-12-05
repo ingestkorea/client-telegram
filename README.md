@@ -34,7 +34,6 @@ To send a request, you:
 + Initiate command with input parameters.
 + Call `send` operation on client with command object as input.
 
-
 ```ts
 // a client can be shared by different commands.
 const client = new TelegramClient({
