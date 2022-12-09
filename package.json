@@ -1,6 +1,6 @@
 {
   "name": "@ingestkorea/client-telegram",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "INGESTKOREA SDK Telegram Client for Node.js.",
   "main": "./dist-cjs/index.js",
   "module": "./dist-es/index.js",
@@ -28,5 +28,10 @@
   "dependencies": {
     "@ingestkorea/util-error-handler": "^1.0.2",
     "@ingestkorea/util-http-handler": "^1.0.0"
-  }
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "telegram bot"
+  ]
 }
