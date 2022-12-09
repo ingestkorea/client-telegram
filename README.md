@@ -2,6 +2,7 @@
 
 [![npm (scoped)](https://img.shields.io/npm/v/@ingestkorea/client-telegram?style=flat-square)](https://www.npmjs.com/package/@ingestkorea/client-telegram)
 [![NPM downloads](https://img.shields.io/npm/dm/@ingestkorea/client-telegram?style=flat-square)](https://www.npmjs.com/package/@ingestkorea/client-telegram)
+![Build Status](https://codebuild.ap-northeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiL3FHUm5hQWFuSFFHUTZ0bUx2WXI5Z2trcDdsM1F6ZE9rU21LN2lTTmxWQUZHY2k4cTU2Ri9rTWwybUFISkU0MWdCODJPS21TZXl1V3hNenp0S3B3Tll3PSIsIml2UGFyYW1ldGVyU3BlYyI6Ik5sUnlRRXRycGROTENsaEoiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)
 
 ## Description
 INGESTKOREA SDK Telegram Client for Node.js.
