@@ -13,7 +13,9 @@ export class SendMessageCommand extends TelegramCommand<SendMessageCommandInput,
   input: SendMessageCommandInput
   constructor(input: SendMessageCommandInput) {
     super(input)
-    this.input = input;
+    this.input = {
+      ...input
+    };
   };
   async serialize(input: SendMessageCommandInput, config: TelegramClientResolvedConfig): Promise<HttpRequest> {
     let request = await serializeIngestkorea_restJson_SendMessageCommand(input, config);

@@ -21,12 +21,15 @@ npm install @ingestkorea/client-telegram
   npm install -D @types/node # save dev mode
   ```
 
-### Support Methods
-+ sendMessage
+### Support Commands
++ SendMessage
 
 ### Import
 ```ts
-import { TelegramClient, SendMessageCommand, SendMessageCommandInput } from '@ingestkorea/client-telegram';
+import {
+  TelegramClient,
+  SendMessageCommand, SendMessageCommandInput
+} from '@ingestkorea/client-telegram';
 ```
 
 ### Usage
@@ -46,6 +49,7 @@ const client = new TelegramClient({
 
 const input: SendMessageCommandInput = {
   text: 'hello client-telegram',
+  chatId: CHAT_ID // optional // this chatId override TelegramClient config
 };
 const command = new SendMessageCommand(input);
 ```

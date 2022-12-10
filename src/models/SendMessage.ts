@@ -1,5 +1,6 @@
 export interface SendMessageInput {
   text: string
+  chatId?: string | number
   parse_mode?: ParseMode
   disable_web_page_preview?: boolean
 };

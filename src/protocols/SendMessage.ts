@@ -8,13 +8,13 @@ export const serializeIngestkorea_restJson_SendMessageCommand = async (
   input: SendMessageCommandInput,
   config: TelegramClientResolvedConfig
 ): Promise<HttpRequest> => {
-  const { text, parse_mode, disable_web_page_preview } = input;
-  const { token, chatId } = config.credentials;
+  const { text, chatId, parse_mode, disable_web_page_preview } = input;
+  const { token, chatId: defaultChatId } = config.credentials;
   const hostname = "api.telegram.org";
   const path = "/bot" + token + "/sendMessage";
   const headers = { "content-type": "application/json; charset=utf-8" };
   const body = JSON.stringify({
-    chat_id: chatId,
+    chat_id: chatId != undefined ? chatId.toString() : defaultChatId,
     text: text,
     ...(parse_mode !== undefined && { parse_mode: parse_mode }),
     ...(disable_web_page_preview !== undefined && { disable_web_page_preview: disable_web_page_preview })
