@@ -1,11 +1,11 @@
-import { HttpRequest } from '@ingestkorea/util-http-handler';
+import { HttpRequest } from "@ingestkorea/util-http-handler";
 
-export const middlewareIngestkoreaMetadata = async (request: HttpRequest,): Promise<HttpRequest> => {
+export const middlewareIngestkoreaMetadata = async (request: HttpRequest): Promise<HttpRequest> => {
   const { longDate } = await convertFormatDate();
   request.headers = {
     ...request.headers,
-    ['x-ingestkorea-date']: longDate,
-    ['x-ingestkorea-user-agent']: '@ingestkorea/client-telegram/1.0.x'
+    ["x-ingestkorea-date"]: longDate,
+    ["x-ingestkorea-user-agent"]: "@ingestkorea/client-telegram/1.0.x",
   };
   return request;
 };

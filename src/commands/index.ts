@@ -1,1 +1,1 @@
-export * from './SendMessageCommand';
+export * from "./SendMessageCommand";

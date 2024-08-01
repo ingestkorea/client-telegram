@@ -1,12 +1,12 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-        "outDir": "dist-types",
-        "module": "ESNext",
-        "target":"ES2018",
-        "strict": true,
-        "declaration": true,
-        "emitDeclarationOnly": true,
-        "removeComments": false,
-    }
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-types",
+    "module": "ESNext",
+    "target": "ES2018",
+    "strict": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "removeComments": false
+  }
 }

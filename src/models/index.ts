@@ -1,2 +1,2 @@
-export * from './TelegramCommand';
-export * from './SendMessage';
+export * from "./TelegramCommand";
+export * from "./SendMessage";
