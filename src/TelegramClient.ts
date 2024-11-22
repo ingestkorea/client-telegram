@@ -1,7 +1,7 @@
 import { NodeHttpHandler } from "@ingestkorea/util-http-handler";
 import { IngestkoreaError } from "@ingestkorea/util-error-handler";
-import { TelegramCommand } from "./models";
-import { middlewareIngestkoreaMetadata } from "./middleware";
+import { MetadataBearer, TelegramCommand } from "./models";
+import { middlewareIngestkoreaMetadata, middlewareSortHeaders, middlewareRetry } from "./middleware";
 
 export type Credentials = {
   credentials?: {
@@ -36,8 +36,9 @@ export class TelegramClient {
   async send<T, P>(command: TelegramCommand<T, P, TelegramClientResolvedConfig>): Promise<P> {
     let input = command.input;
     let request = await command.serialize(input, this.config);
-    request = await middlewareIngestkoreaMetadata(request);
-    let { response } = await this.requestHandler.handle(request);
+    request = await middlewareIngestkoreaMetadata(request, this.config);
+    request = await middlewareSortHeaders(request, this.config);
+    let response = await middlewareRetry(request, this.config, this.requestHandler);
     let output = await command.deserialize(response);
     return output;
   }

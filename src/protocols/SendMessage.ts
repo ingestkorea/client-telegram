@@ -9,7 +9,9 @@ import {
   Entities,
   InlineKeyboard,
   InlineKeyboardButton,
-} from "../models/SendMessage";
+  MetadataBearer,
+  ResponseMetadata,
+} from "../models";
 import { parseBody, parseErrorBody } from "./constants";
 
 export const serializeIngestkorea_restJson_SendMessageCommand = async (
@@ -39,17 +41,29 @@ export const serializeIngestkorea_restJson_SendMessageCommand = async (
   });
 };
 
-export const deserializeIngestkorea_restJson_SendMessageCommand = async (
-  output: HttpResponse
-): Promise<SendMessageCommandOutput> => {
-  if (output.statusCode >= 300) await parseErrorBody(output);
-  let data = await parseBody(output); //SendMessageOutput
+export const deserializeMetadata = (response: HttpResponse): ResponseMetadata => {
+  return {
+    httpStatusCode: response.statusCode,
+  };
+};
+
+export const deserializeIngestkorea_restJson_SendMessageCommand = async (response: {
+  response: HttpResponse;
+  output: MetadataBearer;
+}): Promise<SendMessageCommandOutput> => {
+  const { response: httpResponse, output } = response;
+  if (httpResponse.statusCode >= 300) await parseErrorBody(httpResponse);
+
+  let data = await parseBody(httpResponse); //SendMessageOutput
   let contents: any = {};
   contents = deserializeIngestkorea_restJson_SendMessageOutput(data);
-  const response: SendMessageCommandOutput = {
+  return {
+    $metadata: {
+      ...deserializeMetadata(httpResponse),
+      ...output.$metadata,
+    },
     ...contents,
   };
-  return response;
 };
 
 export const deserializeIngestkorea_restJson_SendMessageOutput = (output: any): SendMessageOutput => {

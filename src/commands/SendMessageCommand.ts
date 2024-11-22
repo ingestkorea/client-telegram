@@ -1,13 +1,13 @@
 import { HttpRequest, HttpResponse } from "@ingestkorea/util-http-handler";
 import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { TelegramCommand, SendMessageInput, SendMessageOutput } from "../models";
+import { TelegramCommand, SendMessageInput, SendMessageOutput, MetadataBearer } from "../models";
 import {
   serializeIngestkorea_restJson_SendMessageCommand,
   deserializeIngestkorea_restJson_SendMessageCommand,
 } from "../protocols";
 
 export interface SendMessageCommandInput extends SendMessageInput {}
-export interface SendMessageCommandOutput extends SendMessageOutput {}
+export interface SendMessageCommandOutput extends SendMessageOutput, MetadataBearer {}
 
 export class SendMessageCommand extends TelegramCommand<
   SendMessageCommandInput,
@@ -25,8 +25,8 @@ export class SendMessageCommand extends TelegramCommand<
     let request = await serializeIngestkorea_restJson_SendMessageCommand(input, config);
     return request;
   }
-  async deserialize(response: HttpResponse): Promise<SendMessageCommandOutput> {
-    let output = await deserializeIngestkorea_restJson_SendMessageCommand(response);
-    return output;
+  async deserialize(response: { response: HttpResponse; output: MetadataBearer }): Promise<SendMessageCommandOutput> {
+    let result = await deserializeIngestkorea_restJson_SendMessageCommand(response);
+    return result;
   }
 }
