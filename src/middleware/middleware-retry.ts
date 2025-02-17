@@ -1,54 +1,42 @@
-import { NodeHttpHandler, HttpRequest } from "@ingestkorea/util-http-handler";
 import { IngestkoreaError } from "@ingestkorea/util-error-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { DeserializeMiddleware } from "../models";
+import { Middleware } from "../models";
 
 const REQUEST_HEADER = "x-ingestkorea-request";
 
-export const middlewareRetry: DeserializeMiddleware = async (
-  request: HttpRequest,
-  config: TelegramClientResolvedConfig,
-  handler: NodeHttpHandler
-) => {
-  const maxAttempts = 3;
+export const middlewareRetry: Middleware<any, any> = (next, context) => async (request) => {
+  const MAX_RETRIES = 3;
   let attempts = 0;
   let totalRetryDelay = 0;
   let lastError = new IngestkoreaError({
     code: 400,
     type: "Bad Request",
     message: "Invalid Request",
-    description: { attempts, maxAttempts, totalRetryDelay },
+    description: { attempts, maxRetries: MAX_RETRIES, totalRetryDelay },
   });
-  while (true) {
+  while (attempts < MAX_RETRIES) {
     try {
-      request.headers[REQUEST_HEADER] = `attempt=${
-        attempts + 1
-      }; max=${maxAttempts}; totalRetryDelay=${totalRetryDelay}`;
-      let { response } = await handler.handle(request);
-      return {
-        output: {
-          $metadata: {
-            attempts: attempts + 1,
-            totalRetryDelay: totalRetryDelay,
-          },
-        },
-        response,
-      };
-    } catch (err) {
+      const requestLog = `attempt=${attempts + 1}; max=${MAX_RETRIES}; totalRetryDelay=${totalRetryDelay}`;
+      request.headers[REQUEST_HEADER] = requestLog;
+
+      const { response, output } = await next(request);
+      output.$metadata.attempts = attempts + 1;
+      output.$metadata.totalRetryDelay = totalRetryDelay;
+      return { response, output };
+    } catch (error) {
       attempts++;
-      if (attempts == maxAttempts) {
+      if (attempts == MAX_RETRIES) {
         lastError.error.description.attempts = attempts;
         throw lastError;
       }
 
-      const delay = attempts * 1000;
+      const delay = MAX_RETRIES * 1000;
       totalRetryDelay += delay;
-      lastError.error.description = { attempts, maxAttempts, totalRetryDelay };
+      lastError.error.description = { attempts, maxRetries: MAX_RETRIES, totalRetryDelay };
 
-      if (err instanceof IngestkoreaError) {
+      if (error instanceof IngestkoreaError) {
         lastError.error.description = {
           ...lastError.error.description,
-          detail: err.error.description,
+          detail: error.error.description,
         };
       }
       await new Promise((resolve) => setTimeout(resolve, delay));

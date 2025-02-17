@@ -1,4 +1,4 @@
-export interface SendMessageInput {
+export interface SendMessageRequest {
   text: string;
   chatId?: string | number;
   parse_mode?: ParseMode;
@@ -11,11 +11,11 @@ export interface SendMessageInput {
 export type ParseMode = "MarkdownV2" | "HTML" | "Markdown";
 
 export interface ResolvedInlineKeyboard {
-  inline_keyboard: [ResolvedInlineKeyboardButton[]];
+  inline_keyboard: ResolvedInlineKeyboardButton[][];
 }
 export interface ResolvedInlineKeyboardButton extends Required<InlineKeyboardButton> {}
 
-export interface SendMessageOutput {
+export interface SendMessageResult {
   ok?: boolean;
   result?: Message;
 }

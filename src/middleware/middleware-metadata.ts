@@ -1,18 +1,16 @@
-import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { BuildMiddleware } from "../models";
+import { Middleware } from "../models";
 
-export const middlewareIngestkoreaMetadata: BuildMiddleware = async (
-  request: HttpRequest,
-  config: TelegramClientResolvedConfig
-) => {
+const USER_AGENT_HEADER = "x-ingestkorea-user-agent";
+const DATE_HEADER = "x-ingestkorea-date";
+
+export const middlewareIngestkoreaMetadata: Middleware<any, any> = (next, context) => async (request) => {
   const { longDate } = convertFormatDate();
   request.headers = {
     ...request.headers,
-    ["x-ingestkorea-date"]: longDate,
-    ["x-ingestkorea-user-agent"]: "@ingestkorea/client-telegram/1.2.x",
+    [DATE_HEADER]: longDate,
+    [USER_AGENT_HEADER]: "@ingestkorea/client-telegram/1.3.x",
   };
-  return request;
+  return next(request);
 };
 
 /**

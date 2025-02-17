@@ -2,22 +2,23 @@ import { HttpRequest, HttpResponse } from "@ingestkorea/util-http-handler";
 import { TelegramClientResolvedConfig } from "../TelegramClient";
 import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/SendMessageCommand";
 import {
-  SendMessageOutput,
+  RequestSerializer,
+  ResponseDeserializer,
+  SendMessageResult,
   Message,
   From,
   Chat,
   Entities,
   InlineKeyboard,
   InlineKeyboardButton,
-  MetadataBearer,
   ResponseMetadata,
 } from "../models";
 import { parseBody, parseErrorBody } from "./constants";
 
-export const serializeIngestkorea_restJson_SendMessageCommand = async (
-  input: SendMessageCommandInput,
-  config: TelegramClientResolvedConfig
-): Promise<HttpRequest> => {
+export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, TelegramClientResolvedConfig> = async (
+  input,
+  config
+) => {
   const { token, chatId } = config.credentials;
   const hostname = "api.telegram.org";
   const path = "/bot" + token + "/sendMessage";
@@ -47,100 +48,96 @@ export const deserializeMetadata = (response: HttpResponse): ResponseMetadata =>
   };
 };
 
-export const deserializeIngestkorea_restJson_SendMessageCommand = async (response: {
-  response: HttpResponse;
-  output: MetadataBearer;
-}): Promise<SendMessageCommandOutput> => {
-  const { response: httpResponse, output } = response;
-  if (httpResponse.statusCode >= 300) await parseErrorBody(httpResponse);
+export const de_SendMessageCommand: ResponseDeserializer<
+  SendMessageCommandOutput,
+  TelegramClientResolvedConfig
+> = async (response, config) => {
+  if (response.statusCode >= 300) await parseErrorBody(response);
 
-  let data = await parseBody(httpResponse); //SendMessageOutput
+  let data = await parseBody(response);
   let contents: any = {};
-  contents = deserializeIngestkorea_restJson_SendMessageOutput(data);
+  contents = de_SendMessageResult(data);
+
   return {
-    $metadata: {
-      ...deserializeMetadata(httpResponse),
-      ...output.$metadata,
-    },
+    $metadata: deserializeMetadata(response),
     ...contents,
   };
 };
 
-export const deserializeIngestkorea_restJson_SendMessageOutput = (output: any): SendMessageOutput => {
+const de_SendMessageResult = (output: any): SendMessageResult => {
   const { ok, result } = output;
   return {
     ok: ok != null ? ok : undefined,
-    result: result != null ? deserializeIngestkorea_restJson_MessageResult(result) : undefined,
+    result: result != null ? de_Message(result) : undefined,
   } as any;
 };
 
-export const deserializeIngestkorea_restJson_MessageResult = (output: any): Message => {
-  const { message_id, from, chat, date, text, entities, reply_markup } = output;
+const de_Message = (output: any): Message => {
   return {
-    message_id: message_id != null ? message_id : undefined,
-    from: from != null ? deserializeIngestkorea_restJson_From(from) : undefined,
-    chat: chat != null ? deserializeIngestkorea_restJson_Chat(chat) : undefined,
-    date: date != null ? date : undefined,
-    text: text != null ? text : undefined,
-    entities: entities != null ? deserializeIngestkorea_restJson_Entities(entities) : undefined,
-    reply_markup: reply_markup != null ? deserializeIngestkorea_restJson_InlineKeyboard(reply_markup) : undefined,
+    message_id: output.message_id != null ? output.message_id : undefined,
+    from: output.from != null ? de_From(output.from) : undefined,
+    chat: output.chat != null ? de_Chat(output.chat) : undefined,
+    date: output.date != null ? output.date : undefined,
+    text: output.text != null ? output.text : undefined,
+    entities: output.entities != null ? de_EntityList(output.entities) : undefined,
+    reply_markup: output.reply_markup != null ? de_InlineKeyboard(output.reply_markup) : undefined,
   };
 };
 
-export const deserializeIngestkorea_restJson_From = (output: any): From => {
-  const { id, is_bot, first_name, username } = output;
+const de_From = (output: any): From => {
   return {
-    id: id != null ? id : undefined,
-    is_bot: is_bot != null ? is_bot : undefined,
-    first_name: first_name != null ? first_name : undefined,
-    username: username != null ? username : undefined,
+    id: output.id != null ? output.id : undefined,
+    is_bot: output.is_bot != null ? output.is_bot : undefined,
+    first_name: output.first_name != null ? output.first_name : undefined,
+    username: output.username != null ? output.username : undefined,
   };
 };
 
-export const deserializeIngestkorea_restJson_Chat = (output: any): Chat => {
-  const { id, first_name, last_name, username, type } = output;
+const de_Chat = (output: any): Chat => {
   return {
-    id: id != null ? id : undefined,
-    first_name: first_name != null ? first_name : undefined,
-    last_name: last_name != null ? last_name : undefined,
-    username: username != null ? username : undefined,
-    type: type != null ? type : undefined,
+    id: output.id != null ? output.id : undefined,
+    first_name: output.first_name != null ? output.first_name : undefined,
+    last_name: output.last_name != null ? output.last_name : undefined,
+    username: output.username != null ? output.username : undefined,
+    type: output.type != null ? output.type : undefined,
   };
 };
 
-export const deserializeIngestkorea_restJson_Entities = (output: any[]): Entities[] => {
-  const result: Entities[] = output.map((data) => {
-    const { type, offset, length } = data;
-    return {
-      type: type != null ? type : undefined,
-      offset: offset != null ? offset : undefined,
-      length: length != null ? length : undefined,
-    };
-  });
+const de_EntityList = (output: any[]): Entities[] => {
+  const result = (output || []).filter((e) => e != null).map((entry) => de_Entity(entry));
   return result;
 };
 
-export const deserializeIngestkorea_restJson_InlineKeyboard = (output: any): InlineKeyboard => {
+const de_Entity = (output: any): Entities => {
+  return {
+    type: output.type != null ? output.type : undefined,
+    offset: output.offset != null ? output.offset : undefined,
+    length: output.length != null ? output.length : undefined,
+  };
+};
+
+const de_InlineKeyboard = (output: any): InlineKeyboard => {
   const { inline_keyboard } = output;
-
   return {
-    inline_keyboard:
-      inline_keyboard != undefined ? deserializeIngestkorea_restJson_InlineKeyboardButtons(inline_keyboard) : undefined,
+    inline_keyboard: inline_keyboard != undefined ? de_InlineKeyboardButtonList(inline_keyboard) : undefined,
   };
 };
 
-export const deserializeIngestkorea_restJson_InlineKeyboardButtons = (output: any[][]): InlineKeyboardButton[][] => {
-  const result: InlineKeyboardButton[][] = output.map(deserializeIngestkorea_restJson_InlineKeyboardButton);
+const de_InlineKeyboardButtonList = (output: any[][]): InlineKeyboardButton[][] => {
+  const result: InlineKeyboardButton[][] = (output || [])
+    .filter((e) => e != null)
+    .map((entry) => de_InlineKeyboardButton(entry));
   return result;
 };
 
-export const deserializeIngestkorea_restJson_InlineKeyboardButton = (output: any[]): InlineKeyboardButton[] => {
-  const result: InlineKeyboardButton[] = output.map((button) => {
-    const { text, url } = button;
-    return {
-      text: text != undefined ? text : undefined,
-      url: url != undefined ? url : undefined,
-    };
-  });
+export const de_InlineKeyboardButton = (output: any[]): InlineKeyboardButton[] => {
+  const result: InlineKeyboardButton[] = (output || [])
+    .filter((e) => e != null)
+    .map((entry) => {
+      return {
+        text: entry.text != undefined ? entry.text : undefined,
+        url: entry.url != undefined ? entry.url : undefined,
+      };
+    });
   return result;
 };

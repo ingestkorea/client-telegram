@@ -1,14 +1,6 @@
-import { HttpRequest, HttpResponse, NodeHttpHandler } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { MetadataBearer } from "./MetadataBearer";
+export type Middleware<Input extends object, Output extends object> = (
+  next: Handler<Input, Output>,
+  context: any
+) => Handler<Input, Output>;
 
-export interface BuildMiddleware {
-  (request: HttpRequest, config: TelegramClientResolvedConfig): Promise<HttpRequest>;
-}
-
-export interface DeserializeMiddleware {
-  (request: HttpRequest, config: TelegramClientResolvedConfig, handler: NodeHttpHandler): Promise<{
-    response: HttpResponse;
-    output: MetadataBearer;
-  }>;
-}
+export type Handler<Input extends object, Output extends object> = (args: Input) => Promise<Output>;

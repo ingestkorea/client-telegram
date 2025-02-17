@@ -1,19 +1,13 @@
-import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { BuildMiddleware } from "../models";
+import { Middleware } from "../models";
 
-export const middlewareSortHeaders: BuildMiddleware = async (
-  request: HttpRequest,
-  config: TelegramClientResolvedConfig
-) => {
-  let { headers } = request;
+export const middlewareSortHeaders: Middleware<any, any> = (next, context) => async (request) => {
   let init: Record<string, string> = {};
-  const sortedHeaders = Object.keys(headers)
+  const sortedHeaders = Object.keys(request.headers)
     .sort()
     .reduce((acc, curr) => {
-      acc[curr] = headers[curr];
+      acc[curr] = request.headers[curr];
       return acc;
     }, init);
   request.headers = sortedHeaders;
-  return request;
+  return next(request);
 };
