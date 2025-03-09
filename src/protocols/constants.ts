@@ -1,47 +1,62 @@
 import { IngestkoreaError, ingestkoreaErrorCodeChecker } from "@ingestkorea/util-error-handler";
-import { HttpResponse, collectBodyString, destroyStream } from "@ingestkorea/util-http-handler";
+import { HttpResponse, collectBodyString } from "@ingestkorea/util-http-handler";
+import { ResponseMetadata, TelegramErrorInfo } from "../models";
 
-export const parseBody = async (output: HttpResponse): Promise<any> => {
-  const { statusCode, headers, body: streamBody } = output;
-  const isValid = await verifyJsonHeader(headers["content-type"]);
+export const deserializeMetadata = (response: HttpResponse): ResponseMetadata => {
+  return {
+    httpStatusCode: response.statusCode,
+  };
+};
 
-  if (!isValid) {
-    await destroyStream(streamBody);
-    let customError = new IngestkoreaError({
+export const parseBody = async (response: HttpResponse): Promise<any> => {
+  const { statusCode, headers, body: streamBody } = response;
+  const data = await collectBodyString(streamBody);
+  if (!data) return {};
+
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    throw new IngestkoreaError({
       code: 400,
       type: "Bad Request",
       message: "Invalid Request",
-      description: "content-type is not application/json",
+      description: "SyntaxError: content-type is not application/json",
     });
-    if (ingestkoreaErrorCodeChecker(statusCode)) customError.error.code = statusCode;
-    throw customError;
   }
-
-  const data = await collectBodyString(streamBody);
-  if (data.length) return JSON.parse(data);
-  return {};
 };
 
-export const parseErrorBody = async (output: HttpResponse): Promise<void> => {
-  const { statusCode, headers, body: streamBody } = output;
-  const isValid = await verifyJsonHeader(headers["content-type"]);
+export const parseErrorBody = async (response: HttpResponse): Promise<void> => {
+  const data = await parseBody(response);
 
-  await destroyStream(streamBody);
+  let contents: any = {};
+  contents = _json(de_TelegramErrorInfo(data));
 
-  let customError = new IngestkoreaError({
-    code: 400,
+  throw new IngestkoreaError({
+    code: ingestkoreaErrorCodeChecker(response.statusCode) ? response.statusCode : 400,
     type: "Bad Request",
     message: "Invalid Request",
-    description: "content-type is not application/json",
+    description: contents,
   });
-  if (ingestkoreaErrorCodeChecker(statusCode)) customError.error.code = statusCode;
-  if (!isValid) throw customError;
-
-  const data = await collectBodyString(streamBody);
-  if (data.length) customError.error.description = JSON.parse(data);
-  throw customError;
 };
 
-const verifyJsonHeader = async (contentType: string): Promise<boolean> => {
-  return /application\/json/gi.exec(contentType) ? true : false;
+export const _json = (obj: any): any => {
+  if (obj == null) return {};
+  if (Array.isArray(obj)) return obj.filter((d) => d != null).map(_json);
+  if (typeof obj === "object") {
+    const target: any = {};
+    for (const key of Object.keys(obj)) {
+      if (obj[key] == null) continue;
+      target[key] = _json(obj[key]);
+    }
+    return target;
+  }
+  return obj;
+};
+
+const de_TelegramErrorInfo = (output: any): TelegramErrorInfo => {
+  return {
+    ok: output.ok != null ? output.ok : undefined,
+    error_code: output.error_code != null ? output.error_code : undefined,
+    description: output.description != null ? output.description : undefined,
+  };
 };

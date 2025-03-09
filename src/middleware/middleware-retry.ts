@@ -29,7 +29,7 @@ export const middlewareRetry: Middleware<any, any> = (next, context) => async (r
         throw lastError;
       }
 
-      const delay = MAX_RETRIES * 1000;
+      const delay = attempts * 1000;
       totalRetryDelay += delay;
       lastError.error.description = { attempts, maxRetries: MAX_RETRIES, totalRetryDelay };
 

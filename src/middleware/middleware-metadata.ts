@@ -8,7 +8,7 @@ export const middlewareIngestkoreaMetadata: Middleware<any, any> = (next, contex
   request.headers = {
     ...request.headers,
     [DATE_HEADER]: longDate,
-    [USER_AGENT_HEADER]: "@ingestkorea/client-telegram/1.3.x",
+    [USER_AGENT_HEADER]: "@ingestkorea/client-telegram/1.4.x",
   };
   return next(request);
 };

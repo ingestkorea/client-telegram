@@ -5,12 +5,12 @@ export interface SendMessageRequest {
   disable_web_page_preview?: boolean;
   disable_notification?: boolean;
   protect_content?: boolean;
-  reply_markup?: ResolvedInlineKeyboard;
+  reply_markup?: InlineKeyboardMarkup;
 }
 
 export type ParseMode = "MarkdownV2" | "HTML" | "Markdown";
 
-export interface ResolvedInlineKeyboard {
+export interface InlineKeyboardMarkup {
   inline_keyboard: ResolvedInlineKeyboardButton[][];
 }
 export interface ResolvedInlineKeyboardButton extends Required<InlineKeyboardButton> {}
@@ -34,6 +34,8 @@ export interface From {
   id?: number;
   is_bot?: boolean;
   first_name?: string;
+  last_name?: string;
+  language_code?: string;
   username?: string;
 }
 

@@ -1,4 +1,4 @@
-import { HttpRequest, HttpResponse } from "@ingestkorea/util-http-handler";
+import { HttpRequest } from "@ingestkorea/util-http-handler";
 import { TelegramClientResolvedConfig } from "../TelegramClient";
 import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/SendMessageCommand";
 import {
@@ -11,9 +11,8 @@ import {
   Entities,
   InlineKeyboard,
   InlineKeyboardButton,
-  ResponseMetadata,
 } from "../models";
-import { parseBody, parseErrorBody } from "./constants";
+import { parseBody, parseErrorBody, deserializeMetadata, _json } from "./constants";
 
 export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, TelegramClientResolvedConfig> = async (
   input,
@@ -24,8 +23,8 @@ export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, T
   const path = "/bot" + token + "/sendMessage";
   const headers = { "content-type": "application/json; charset=utf-8" };
   const body = JSON.stringify({
-    chat_id: input.chatId != undefined ? input.chatId.toString() : chatId,
     text: input.text,
+    chat_id: input.chatId != undefined ? input.chatId.toString() : chatId,
     ...(input.parse_mode !== undefined && { parse_mode: input.parse_mode }),
     ...(input.disable_web_page_preview !== undefined && { disable_web_page_preview: input.disable_web_page_preview }),
     ...(input.disable_notification != undefined && { disable_notification: input.disable_notification }),
@@ -42,12 +41,6 @@ export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, T
   });
 };
 
-export const deserializeMetadata = (response: HttpResponse): ResponseMetadata => {
-  return {
-    httpStatusCode: response.statusCode,
-  };
-};
-
 export const de_SendMessageCommand: ResponseDeserializer<
   SendMessageCommandOutput,
   TelegramClientResolvedConfig
@@ -56,7 +49,7 @@ export const de_SendMessageCommand: ResponseDeserializer<
 
   let data = await parseBody(response);
   let contents: any = {};
-  contents = de_SendMessageResult(data);
+  contents = _json(de_SendMessageResult(data));
 
   return {
     $metadata: deserializeMetadata(response),
@@ -65,14 +58,13 @@ export const de_SendMessageCommand: ResponseDeserializer<
 };
 
 const de_SendMessageResult = (output: any): SendMessageResult => {
-  const { ok, result } = output;
   return {
-    ok: ok != null ? ok : undefined,
-    result: result != null ? de_Message(result) : undefined,
-  } as any;
+    ok: output.ok != null ? output.ok : undefined,
+    result: output.result != null ? de_Message(output.result) : undefined,
+  };
 };
 
-const de_Message = (output: any): Message => {
+export const de_Message = (output: any): Message => {
   return {
     message_id: output.message_id != null ? output.message_id : undefined,
     from: output.from != null ? de_From(output.from) : undefined,
@@ -89,6 +81,8 @@ const de_From = (output: any): From => {
     id: output.id != null ? output.id : undefined,
     is_bot: output.is_bot != null ? output.is_bot : undefined,
     first_name: output.first_name != null ? output.first_name : undefined,
+    last_name: output.last_name != null ? output.last_name : undefined,
+    language_code: output.language_code != null ? output.language_code : undefined,
     username: output.username != null ? output.username : undefined,
   };
 };
@@ -124,13 +118,13 @@ const de_InlineKeyboard = (output: any): InlineKeyboard => {
 };
 
 const de_InlineKeyboardButtonList = (output: any[][]): InlineKeyboardButton[][] => {
-  const result: InlineKeyboardButton[][] = (output || [])
+  const result: InlineKeyboardButton[][] = (output || [[]])
     .filter((e) => e != null)
     .map((entry) => de_InlineKeyboardButton(entry));
   return result;
 };
 
-export const de_InlineKeyboardButton = (output: any[]): InlineKeyboardButton[] => {
+const de_InlineKeyboardButton = (output: any[]): InlineKeyboardButton[] => {
   const result: InlineKeyboardButton[] = (output || [])
     .filter((e) => e != null)
     .map((entry) => {

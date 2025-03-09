@@ -1,4 +1,3 @@
-import { HttpRequest, HttpResponse } from "@ingestkorea/util-http-handler";
 import { TelegramClientResolvedConfig } from "../TelegramClient";
 import {
   TelegramCommand,
