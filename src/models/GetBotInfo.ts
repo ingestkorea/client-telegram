@@ -1,9 +1,8 @@
-export interface GetBotInfoRequest {}
+import { TelegramSuccess } from "./TelegramResponse.js";
 
-export interface GetBotInfoResult {
-  ok?: boolean;
-  result?: BotInfo;
-}
+export type GetBotInfoRequest = {};
+
+export type GetBotInfoResult = TelegramSuccess<BotInfo>;
 
 export interface BotInfo {
   id?: number;

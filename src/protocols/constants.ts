@@ -1,42 +1,80 @@
-import { IngestkoreaError, ingestkoreaErrorCodeChecker } from "@ingestkorea/util-error-handler";
 import { HttpResponse, collectBodyString } from "@ingestkorea/util-http-handler";
-import { ResponseMetadata, TelegramErrorInfo } from "../models";
+import { ResponseMetadata, TelegramResponse, TelegramSuccess, TelegramFailure } from "../models/index.js";
+import { INGESTKOREA_RETRY, INGESTKOREA_RETRY_DELAY } from "../middleware/constants.js";
 
 export const deserializeMetadata = (response: HttpResponse): ResponseMetadata => {
+  const attempts = response.headers[INGESTKOREA_RETRY] || undefined;
+  const totalRetryDelay = response.headers[INGESTKOREA_RETRY_DELAY] || undefined;
+
   return {
     httpStatusCode: response.statusCode,
+    ...(attempts && { attempts: Number(attempts) }),
+    ...(totalRetryDelay && { totalRetryDelay: Number(totalRetryDelay) }),
   };
 };
 
-export const parseBody = async (response: HttpResponse): Promise<any> => {
-  const { statusCode, headers, body: streamBody } = response;
-  const data = await collectBodyString(streamBody);
-  if (!data) return {};
+export class TelegramApiError extends Error {
+  readonly failure: TelegramFailure;
+
+  constructor(failure: TelegramFailure) {
+    super(failure.description || "Telegram API Error");
+    this.name = "TelegramApiError";
+    this.failure = failure;
+  }
+}
+
+export const parseBody = async (response: HttpResponse): Promise<unknown> => {
+  const { headers, body: streamBody } = response;
+
+  const raw = await collectBodyString(streamBody);
+  if (!raw) return {};
+
+  const contentType = headers["content-type"] || "";
+
+  if (contentType && !contentType.includes("application/json")) {
+    const preview = raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
+    throw new TelegramApiError({
+      ok: false,
+      error_code: 500,
+      description: `Expected application/json but got "${contentType}". Body preview: ${preview}`,
+    });
+  }
 
   try {
-    return JSON.parse(data);
+    return JSON.parse(raw);
   } catch (e) {
-    throw new IngestkoreaError({
-      code: 400,
-      type: "Bad Request",
-      message: "Invalid Request",
-      description: "SyntaxError: content-type is not application/json",
+    throw new TelegramApiError({
+      ok: false,
+      error_code: 500,
+      description: `Invalid JSON response. ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`,
     });
   }
 };
 
-export const parseErrorBody = async (response: HttpResponse): Promise<void> => {
-  const data = await parseBody(response);
+const isTelegramShape = (x: unknown): x is { ok: boolean } => {
+  return typeof x === "object" && x !== null && "ok" in x && typeof (x as any).ok === "boolean";
+};
 
-  let contents: any = {};
-  contents = _json(de_TelegramErrorInfo(data));
+export const isSuccess = <T>(data: unknown): TelegramSuccess<T> => {
+  if (!isTelegramShape(data)) {
+    throw new TelegramApiError({
+      ok: false,
+      error_code: 500,
+      description: "Response is not a Telegram API (missing ok:boolean).",
+    });
+  }
 
-  throw new IngestkoreaError({
-    code: ingestkoreaErrorCodeChecker(response.statusCode) ? response.statusCode : 400,
-    type: "Bad Request",
-    message: "Invalid Request",
-    description: contents,
-  });
+  const content = data as TelegramResponse<T>;
+
+  if (!content.ok) {
+    throw new TelegramApiError({
+      ok: false,
+      error_code: content.error_code || 400,
+      description: content.description || "Telegram API returned ok=false",
+    });
+  }
+
+  return content;
 };
 
 export const _json = (obj: any): any => {
@@ -51,12 +89,4 @@ export const _json = (obj: any): any => {
     return target;
   }
   return obj;
-};
-
-const de_TelegramErrorInfo = (output: any): TelegramErrorInfo => {
-  return {
-    ok: output.ok != null ? output.ok : undefined,
-    error_code: output.error_code != null ? output.error_code : undefined,
-    description: output.description != null ? output.description : undefined,
-  };
 };

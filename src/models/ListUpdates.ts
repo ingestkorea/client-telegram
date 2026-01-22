@@ -1,15 +1,13 @@
-import { Message } from "./SendMessage";
+import { TelegramSuccess } from "./TelegramResponse.js";
+import { Message } from "./SendMessage.js";
 
-export interface ListUpdatesRequest {
+export type ListUpdatesRequest = {
   offset?: number;
   limit?: number;
   timeout?: number;
-}
+};
 
-export interface ListUpdatesResult {
-  ok?: boolean;
-  result?: UpdateInfo[];
-}
+export type ListUpdatesResult = TelegramSuccess<UpdateInfo[]>;
 
 export type UpdateInfo = {
   update_id?: number;

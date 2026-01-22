@@ -1,8 +1,8 @@
 import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { CreateWebhookCommandInput, CreateWebhookCommandOutput } from "../commands/CreateWebhookCommand";
-import { RequestSerializer, ResponseDeserializer, CreateWebhookResult } from "../models";
-import { parseBody, parseErrorBody, deserializeMetadata, _json } from "./constants";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
+import { parseBody, isSuccess, deserializeMetadata, _json } from "./constants.js";
+import { RequestSerializer, ResponseDeserializer, CreateWebhookResult } from "../models/index.js";
+import { CreateWebhookCommandInput, CreateWebhookCommandOutput } from "../commands/index.js";
 
 export const se_CreateWebhookCommand: RequestSerializer<
   CreateWebhookCommandInput,
@@ -27,22 +27,19 @@ export const de_CreateWebhookCommand: ResponseDeserializer<
   CreateWebhookCommandOutput,
   TelegramClientResolvedConfig
 > = async (response, config) => {
-  if (response.statusCode >= 300) await parseErrorBody(response);
+  const $metadata = deserializeMetadata(response);
 
-  let data = await parseBody(response);
-  let contents: any = {};
-  contents = _json(de_CreateWebhookResult(data));
+  const raw = await parseBody(response);
+  const data = isSuccess<any>(raw);
 
-  return {
-    $metadata: deserializeMetadata(response),
-    ...contents,
+  const content: CreateWebhookResult = {
+    ok: true,
+    result: data.result,
+    description: data.description,
   };
-};
 
-const de_CreateWebhookResult = (output: any): CreateWebhookResult => {
   return {
-    ok: output.ok != null ? output.ok : undefined,
-    result: output.result != null ? output.result : undefined,
-    description: output.description != null ? output.description : undefined,
+    $metadata,
+    ..._json(content),
   };
 };

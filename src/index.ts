@@ -1,2 +1,2 @@
-export * from "./commands";
-export * from "./TelegramClient";
+export * from "./commands/index.js";
+export * from "./TelegramClient.js";

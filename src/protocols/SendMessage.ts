@@ -1,6 +1,6 @@
 import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient";
-import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/SendMessageCommand";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
+import { parseBody, isSuccess, deserializeMetadata, _json } from "./constants.js";
 import {
   RequestSerializer,
   ResponseDeserializer,
@@ -11,8 +11,8 @@ import {
   Entities,
   InlineKeyboard,
   InlineKeyboardButton,
-} from "../models";
-import { parseBody, parseErrorBody, deserializeMetadata, _json } from "./constants";
+} from "../models/index.js";
+import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/index.js";
 
 export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, TelegramClientResolvedConfig> = async (
   input,
@@ -45,34 +45,32 @@ export const de_SendMessageCommand: ResponseDeserializer<
   SendMessageCommandOutput,
   TelegramClientResolvedConfig
 > = async (response, config) => {
-  if (response.statusCode >= 300) await parseErrorBody(response);
+  const $metadata = deserializeMetadata(response);
 
-  let data = await parseBody(response);
-  let contents: any = {};
-  contents = _json(de_SendMessageResult(data));
+  const raw = await parseBody(response);
+  const data = isSuccess<any>(raw);
 
-  return {
-    $metadata: deserializeMetadata(response),
-    ...contents,
+  const content: SendMessageResult = {
+    ok: true,
+    result: de_Message(data.result),
+    description: data.description,
   };
-};
 
-const de_SendMessageResult = (output: any): SendMessageResult => {
   return {
-    ok: output.ok != null ? output.ok : undefined,
-    result: output.result != null ? de_Message(output.result) : undefined,
+    $metadata,
+    ..._json(content),
   };
 };
 
 export const de_Message = (output: any): Message => {
   return {
-    message_id: output.message_id != null ? output.message_id : undefined,
-    from: output.from != null ? de_From(output.from) : undefined,
-    chat: output.chat != null ? de_Chat(output.chat) : undefined,
-    date: output.date != null ? output.date : undefined,
-    text: output.text != null ? output.text : undefined,
-    entities: output.entities != null ? de_EntityList(output.entities) : undefined,
-    reply_markup: output.reply_markup != null ? de_InlineKeyboard(output.reply_markup) : undefined,
+    message_id: output.message_id,
+    from: output.from ? de_From(output.from) : undefined,
+    chat: output.chat ? de_Chat(output.chat) : undefined,
+    date: output.date,
+    text: output.text,
+    entities: output.entities ? de_EntityList(output.entities) : undefined,
+    reply_markup: output.reply_markup ? de_InlineKeyboard(output.reply_markup) : undefined,
   };
 };
 
@@ -104,16 +102,15 @@ const de_EntityList = (output: any[]): Entities[] => {
 
 const de_Entity = (output: any): Entities => {
   return {
-    type: output.type != null ? output.type : undefined,
-    offset: output.offset != null ? output.offset : undefined,
-    length: output.length != null ? output.length : undefined,
+    type: output.type,
+    offset: output.offset,
+    length: output.length,
   };
 };
 
 const de_InlineKeyboard = (output: any): InlineKeyboard => {
-  const { inline_keyboard } = output;
   return {
-    inline_keyboard: inline_keyboard != undefined ? de_InlineKeyboardButtonList(inline_keyboard) : undefined,
+    inline_keyboard: de_InlineKeyboardButtonList(output.inline_keyboard),
   };
 };
 
@@ -129,8 +126,8 @@ const de_InlineKeyboardButton = (output: any[]): InlineKeyboardButton[] => {
     .filter((e) => e != null)
     .map((entry) => {
       return {
-        text: entry.text != undefined ? entry.text : undefined,
-        url: entry.url != undefined ? entry.url : undefined,
+        text: entry.text,
+        url: entry.url,
       };
     });
   return result;

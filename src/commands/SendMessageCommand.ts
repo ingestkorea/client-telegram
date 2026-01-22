@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   SendMessageRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_SendMessageCommand, de_SendMessageCommand } from "../protocols";
+} from "../models/index.js";
+import { se_SendMessageCommand, de_SendMessageCommand } from "../protocols/index.js";
 
-export interface SendMessageCommandInput extends SendMessageRequest {}
-export interface SendMessageCommandOutput extends MetadataBearer, SendMessageResult {}
+export type SendMessageCommandInput = SendMessageRequest;
+export type SendMessageCommandOutput = MetadataBearer & SendMessageResult;
 
 export class SendMessageCommand extends TelegramCommand<
   SendMessageCommandInput,

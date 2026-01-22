@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   DeleteWebhookRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_DeleteWebhookCommand, de_DeleteWebhookCommand } from "../protocols/DeleteWebhook";
+} from "../models/index.js";
+import { se_DeleteWebhookCommand, de_DeleteWebhookCommand } from "../protocols/index.js";
 
-export interface DeleteWebhookCommandInput extends DeleteWebhookRequest {}
-export interface DeleteWebhookCommandOutput extends MetadataBearer, DeleteWebhookResult {}
+export type DeleteWebhookCommandInput = DeleteWebhookRequest;
+export type DeleteWebhookCommandOutput = MetadataBearer & DeleteWebhookResult;
 
 export class DeleteWebhookCommand extends TelegramCommand<
   DeleteWebhookCommandInput,

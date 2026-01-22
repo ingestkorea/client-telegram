@@ -1,9 +1,7 @@
-export interface DeleteWebhookRequest {
-  drop_pending_updates?: boolean;
-}
+import { TelegramSuccess } from "./TelegramResponse.js";
 
-export interface DeleteWebhookResult {
-  ok?: boolean;
-  result?: boolean;
-  description?: string;
-}
+export type DeleteWebhookRequest = {
+  drop_pending_updates?: boolean;
+};
+
+export type DeleteWebhookResult = TelegramSuccess<boolean>;

@@ -1,77 +1,68 @@
 import { NodeHttpHandler } from "@ingestkorea/util-http-handler";
 import { IngestkoreaError } from "@ingestkorea/util-error-handler";
-import { TelegramCommand, Middleware, Handler } from "./models";
-import {
-  middlewareIngestkoreaMetadata,
-  middlewareSortHeaders,
-  middlewareRetry,
-  middlewareSerialize,
-  middlewareDeserialize,
-} from "./middleware";
+import { TelegramCommand, Middleware, Handler } from "./models/index.js";
+import { middlewareIngestkoreaMetadata, middlewareRetry } from "./middleware/index.js";
 
-type CredentialsInputConfig = {
-  credentials?: {
-    token?: string;
-    chatId?: string | number;
-  };
+type Credentials = {
+  token?: string;
+  chatId?: string | number;
 };
-type NodeHttpHandlerInputConfig = {
+type NodeHttpHandlerConfig = {
   connectionTimeout?: number;
   socketTimeout?: number;
 };
 
-type CredentialsResolvedConfig = {
-  credentials: {
-    token: string;
-    chatId: string;
-  };
+type ResolvedCredentials = {
+  token: string;
+  chatId: string;
 };
-type NodeHttpHandlerResolvedConfig = {
+type ResolvedNodeHttpHandlerConfig = {
   connectionTimeout: number;
   socketTimeout: number;
 };
 
-export type TelegramClientConfigType = CredentialsInputConfig & NodeHttpHandlerInputConfig;
-export interface TelegramClientConfig extends TelegramClientConfigType {}
-
-export type TelegramClientResolvedConfigType = CredentialsResolvedConfig & NodeHttpHandlerResolvedConfig;
-export interface TelegramClientResolvedConfig extends TelegramClientResolvedConfigType {}
+export interface TelegramClientConfig extends NodeHttpHandlerConfig {
+  credentials?: Credentials;
+}
+export interface TelegramClientResolvedConfig extends ResolvedNodeHttpHandlerConfig {
+  credentials: ResolvedCredentials;
+}
 
 export class TelegramClient {
   config: TelegramClientResolvedConfig;
   private httpHandler: NodeHttpHandler;
-  private requestHandler: Handler<any, any>;
+  private handler: Handler;
+
   constructor(config: TelegramClientConfig) {
     this.config = resolveClientConfig(config);
     this.httpHandler = new NodeHttpHandler({
       connectionTimeout: this.config.connectionTimeout,
       socketTimeout: this.config.socketTimeout,
     });
-    this.requestHandler = async (request) => {
-      return this.httpHandler.handle(request);
-    };
+
+    const middlewares: Middleware[] = [middlewareIngestkoreaMetadata, middlewareRetry];
+    const requestHandler: Handler = async (input, context) => this.httpHandler.handle(input.request);
+
+    this.handler = composeMiddleware(middlewares, requestHandler);
   }
-  async send<T, P>(command: TelegramCommand<T, P, TelegramClientResolvedConfig>): Promise<P> {
-    const stack = [
-      middlewareSerialize(command.serializer),
-      middlewareIngestkoreaMetadata,
-      middlewareSortHeaders,
-      middlewareRetry,
-      middlewareDeserialize(command.deserializer),
-    ];
-    const handler = composeMiddleware(stack, this.config, this.requestHandler);
-    const response = await handler(command.input);
-    return response.output;
+
+  async send<I, O>(command: TelegramCommand<I, O, TelegramClientResolvedConfig>): Promise<O> {
+    const { input, serializer, deserializer } = command;
+    this.httpHandler.destroy();
+    try {
+      const request = await serializer(input, this.config);
+      const { response } = await this.handler({ request }, this.config);
+      const output = await deserializer(response, this.config);
+      return output;
+    } catch (e) {
+      throw e;
+    }
   }
 }
 
-const composeMiddleware = (
-  middlewares: Middleware<any, any>[],
-  config: TelegramClientResolvedConfig,
-  finalHandler: Handler<any, any>
-) => {
+const composeMiddleware = (middlewares: Middleware[], finalHandler: Handler): Handler => {
   const handler = middlewares.reduceRight((next, middleware) => {
-    return middleware(next, config);
+    return middleware(next);
   }, finalHandler);
   return handler;
 };
@@ -79,15 +70,14 @@ const composeMiddleware = (
 const resolveClientConfig = (config: TelegramClientConfig): TelegramClientResolvedConfig => {
   const { credentials, connectionTimeout, socketTimeout } = config;
 
-  const resolvedCredentials = resolveCredentials(credentials);
   return {
-    ...resolvedCredentials,
-    connectionTimeout: connectionTimeout ? connectionTimeout : 5000,
-    socketTimeout: socketTimeout ? socketTimeout : 5000,
+    credentials: resolveCredentials(credentials),
+    connectionTimeout: connectionTimeout || 3000,
+    socketTimeout: socketTimeout || 3000,
   };
 };
 
-const resolveCredentials = (credentials: any): CredentialsResolvedConfig => {
+const resolveCredentials = (credentials?: Credentials): ResolvedCredentials => {
   let lastError = new IngestkoreaError({
     code: 400,
     type: "Bad Request",
@@ -103,15 +93,13 @@ const resolveCredentials = (credentials: any): CredentialsResolvedConfig => {
   }
 
   return {
-    credentials: {
-      token: resolveToken(token),
-      chatId: chatId.toString(),
-    },
+    token: resolveToken(token),
+    chatId: chatId.toString(),
   };
 };
 
 const resolveToken = (token: string) => {
-  const [botNumber, botId] = token.split(":") as Array<string | undefined>;
+  const [botNumber, botId] = token.split(":");
   if (!botNumber || !botId)
     throw new IngestkoreaError({
       code: 400,

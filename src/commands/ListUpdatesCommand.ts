@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   ListUpdatesRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_ListUpdatesCommand, de_ListUpdatesCommand } from "../protocols";
+} from "../models/index.js";
+import { se_ListUpdatesCommand, de_ListUpdatesCommand } from "../protocols/index.js";
 
-export interface ListUpdatesCommandInput extends ListUpdatesRequest {}
-export interface ListUpdatesCommandOutput extends MetadataBearer, ListUpdatesResult {}
+export type ListUpdatesCommandInput = ListUpdatesRequest;
+export type ListUpdatesCommandOutput = MetadataBearer & ListUpdatesResult;
 
 export class ListUpdatesCommand extends TelegramCommand<
   ListUpdatesCommandInput,

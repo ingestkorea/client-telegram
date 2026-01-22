@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   GetBotInfoRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_GetBotInfoCommand, de_GetBotInfoCommand } from "../protocols/GetBotInfo";
+} from "../models/index.js";
+import { se_GetBotInfoCommand, de_GetBotInfoCommand } from "../protocols/index.js";
 
-export interface GetBotInfoCommandInput extends GetBotInfoRequest {}
-export interface GetBotInfoCommandOutput extends MetadataBearer, GetBotInfoResult {}
+export type GetBotInfoCommandInput = GetBotInfoRequest;
+export type GetBotInfoCommandOutput = MetadataBearer & GetBotInfoResult;
 
 export class GetBotInfoCommand extends TelegramCommand<
   GetBotInfoCommandInput,

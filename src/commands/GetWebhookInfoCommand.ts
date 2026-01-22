@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   GetWebhookInfoRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_GetWebhookInfoCommand, de_GetWebhookInfoCommand } from "../protocols/GetWebhookInfo";
+} from "../models/index.js";
+import { se_GetWebhookInfoCommand, de_GetWebhookInfoCommand } from "../protocols/index.js";
 
-export interface GetWebhookInfoCommandInput extends GetWebhookInfoRequest {}
-export interface GetWebhookInfoCommandOutput extends MetadataBearer, GetWebhookInfoResult {}
+export type GetWebhookInfoCommandInput = GetWebhookInfoRequest;
+export type GetWebhookInfoCommandOutput = MetadataBearer & GetWebhookInfoResult;
 
 export class GetWebhookInfoCommand extends TelegramCommand<
   GetWebhookInfoCommandInput,

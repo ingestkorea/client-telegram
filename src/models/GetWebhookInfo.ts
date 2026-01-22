@@ -1,9 +1,8 @@
-export interface GetWebhookInfoRequest {}
+import { TelegramSuccess } from "./TelegramResponse.js";
 
-export interface GetWebhookInfoResult {
-  ok?: boolean;
-  result?: WebhookInfo;
-}
+export type GetWebhookInfoRequest = {};
+
+export type GetWebhookInfoResult = TelegramSuccess<WebhookInfo>;
 
 export type WebhookInfo = {
   url?: string;

@@ -1,4 +1,4 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient";
+import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
   TelegramCommand,
   CreateWebhookRequest,
@@ -6,11 +6,11 @@ import {
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
-} from "../models";
-import { se_CreateWebhookCommand, de_CreateWebhookCommand } from "../protocols/CreateWebhook";
+} from "../models/index.js";
+import { se_CreateWebhookCommand, de_CreateWebhookCommand } from "../protocols/index.js";
 
-export interface CreateWebhookCommandInput extends CreateWebhookRequest {}
-export interface CreateWebhookCommandOutput extends MetadataBearer, CreateWebhookResult {}
+export type CreateWebhookCommandInput = CreateWebhookRequest;
+export type CreateWebhookCommandOutput = MetadataBearer & CreateWebhookResult;
 
 export class CreateWebhookCommand extends TelegramCommand<
   CreateWebhookCommandInput,

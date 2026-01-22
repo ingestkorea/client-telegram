@@ -1,4 +1,6 @@
-export interface SendMessageRequest {
+import { TelegramSuccess } from "./TelegramResponse.js";
+
+export type SendMessageRequest = {
   text: string;
   chatId?: string | number;
   parse_mode?: ParseMode;
@@ -6,7 +8,9 @@ export interface SendMessageRequest {
   disable_notification?: boolean;
   protect_content?: boolean;
   reply_markup?: InlineKeyboardMarkup;
-}
+};
+
+export type SendMessageResult = TelegramSuccess<Message>;
 
 export type ParseMode = "MarkdownV2" | "HTML" | "Markdown";
 
@@ -14,11 +18,6 @@ export interface InlineKeyboardMarkup {
   inline_keyboard: ResolvedInlineKeyboardButton[][];
 }
 export interface ResolvedInlineKeyboardButton extends Required<InlineKeyboardButton> {}
-
-export interface SendMessageResult {
-  ok?: boolean;
-  result?: Message;
-}
 
 export interface Message {
   message_id?: number;

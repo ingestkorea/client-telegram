@@ -1,13 +1,11 @@
-export interface CreateWebhookRequest {
+import { TelegramSuccess } from "./TelegramResponse.js";
+
+export type CreateWebhookRequest = {
   url: string;
   max_connections?: number;
   allowed_updates?: string[];
   drop_pending_updates?: boolean;
   secret_token?: string;
-}
+};
 
-export interface CreateWebhookResult {
-  ok?: boolean;
-  result?: boolean;
-  description?: string;
-}
+export type CreateWebhookResult = TelegramSuccess<boolean>;

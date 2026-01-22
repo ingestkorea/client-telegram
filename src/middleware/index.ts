@@ -1,4 +1,2 @@
-export * from "./middleware-metadata";
-export * from "./middleware-retry";
-export * from "./middleware-sort-headers";
-export * from "./middleware-serde";
+export * from "./middleware-metadata.js";
+export * from "./middleware-retry.js";
