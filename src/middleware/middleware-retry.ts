@@ -1,68 +1,86 @@
-import { IngestkoreaError } from "@ingestkorea/util-error-handler";
-import { Middleware } from "../models/index.js";
+import { HttpHandlerError } from "@ingestkorea/util-http-handler";
+import { Middleware, TelegramClientError, TelegramClientErrorCode } from "../models/index.js";
 import { INGESTKOREA_REQUEST_LOG, INGESTKOREA_RETRY, INGESTKOREA_RETRY_DELAY } from "./constants.js";
+
+const isRetryableCode: TelegramClientErrorCode[] = [
+  "SDK.NETWORK_ERROR",
+  "SDK.TIMEOUT",
+  "SDK.TOO_MANY_REQUESTS",
+  "SDK.SERVER_ERROR",
+];
 
 export const middlewareRetry: Middleware = (next) => async (input, context) => {
   const MAX_RETRIES = 3;
+  const MIN_DELAY_MS = 300;
   const BASE_DELAY_MS = 500;
   const MAX_DELAY_MS = 5_000;
 
   let attempts = 0;
   let totalRetryDelay = 0;
 
-  let lastError = new IngestkoreaError({
-    code: 400,
-    type: "Bad Request",
-    message: "Invalid Request",
-    description: { attempts, maxRetries: MAX_RETRIES, totalRetryDelay },
-  });
+  input.request.headers = input.request.headers ?? {};
 
   while (attempts < MAX_RETRIES) {
-    const attemptNo = attempts + 1;
+    attempts++;
 
-    const requestLog = `attempt=${attemptNo}; max=${MAX_RETRIES}; totalRetryDelay=${totalRetryDelay}`;
+    const requestLog = `attempt=${attempts}; max=${MAX_RETRIES}; totalRetryDelay=${totalRetryDelay}`;
     input.request.headers[INGESTKOREA_REQUEST_LOG] = requestLog;
 
     try {
-      const { response } = await next(input, context);
+      const { response, output } = await next(input, context);
 
-      response.headers[INGESTKOREA_RETRY] = attemptNo.toString();
+      response.headers[INGESTKOREA_RETRY] = attempts.toString();
       response.headers[INGESTKOREA_RETRY_DELAY] = totalRetryDelay.toString();
 
-      return { response };
+      output.$metadata = {
+        ...output.$metadata,
+        attempts: attempts,
+        totalRetryDelay: totalRetryDelay,
+      };
+
+      return { response, output };
     } catch (error) {
-      attempts++;
-
-      lastError.error.description = { attempts, maxRetries: MAX_RETRIES, totalRetryDelay };
-
-      if (error instanceof IngestkoreaError) {
-        lastError.error.description = {
-          ...lastError.error.description,
-          detail: error.error.description,
-        };
+      let currentError: TelegramClientError;
+      if (error instanceof TelegramClientError) {
+        currentError = error;
+      } else if (error instanceof HttpHandlerError) {
+        currentError = new TelegramClientError({
+          statusCode: -1,
+          code: error.code,
+          message: error.message,
+        });
       } else {
-        lastError.error.description = {
-          ...lastError.error.description,
-          detail: String((error as any)?.message ?? error),
-        };
+        currentError = new TelegramClientError({
+          statusCode: -1,
+          code: "SDK.UNKNOWN_ERROR",
+          message: String((error as any).message ?? "unkknown error"),
+        });
+      }
+
+      const isRetryable = isRetryableCode.some((code) => code === currentError.code);
+      if (!isRetryable) {
+        throw currentError;
       }
 
       if (attempts >= MAX_RETRIES) {
-        lastError.error.description = { attempts, maxRetries: MAX_RETRIES, totalRetryDelay };
-        throw lastError;
+        throw currentError;
       }
 
       const exp = BASE_DELAY_MS * 2 ** (attempts - 1);
       const capped = Math.min(MAX_DELAY_MS, exp);
-      const delay = Math.floor(Math.random() * capped);
+      const baseWait = Math.max(MIN_DELAY_MS, Math.floor(capped / 2));
+      const jitter = Math.floor(Math.random() * (capped - baseWait));
+      const delay = baseWait + jitter;
 
       totalRetryDelay += delay;
-
-      lastError.error.description = { attempts, maxRetries: MAX_RETRIES, totalRetryDelay };
 
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
-  throw lastError;
+  throw new TelegramClientError({
+    statusCode: -1,
+    code: "SDK.UNKNOWN_ERROR",
+    message: "Unexpected retry loop termination",
+  });
 };

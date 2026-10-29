@@ -1,92 +1,123 @@
-import { HttpResponse, collectBodyString } from "@ingestkorea/util-http-handler";
-import { ResponseMetadata, TelegramResponse, TelegramSuccess, TelegramFailure } from "../models/index.js";
-import { INGESTKOREA_RETRY, INGESTKOREA_RETRY_DELAY } from "../middleware/constants.js";
+import { HttpResponse, collectBodyString, destroyStream } from "@ingestkorea/util-http-handler";
+import {
+  ResponseMetadata,
+  Fail,
+  TelegramClientError,
+  TelegramClientErrorCode,
+  HTTP_ERROR_MAP,
+} from "../models/index.js";
+import { createValidator } from "../utils/validator.js";
+
+const validateFail = createValidator<Fail>([
+  { key: "ok", expectedType: "boolean" },
+  { key: "error_code", expectedType: "number" },
+  { key: "description", expectedType: "string" },
+]);
+
+const extractTelegramClientErrorCode = (
+  statusCode: number,
+  fallbackCode?: TelegramClientErrorCode,
+): TelegramClientErrorCode => {
+  if (statusCode in HTTP_ERROR_MAP) {
+    return HTTP_ERROR_MAP[statusCode as keyof typeof HTTP_ERROR_MAP];
+  }
+  return fallbackCode || "SDK.UNKNOWN_ERROR";
+};
 
 export const deserializeMetadata = (response: HttpResponse): ResponseMetadata => {
-  const attempts = response.headers[INGESTKOREA_RETRY] || undefined;
-  const totalRetryDelay = response.headers[INGESTKOREA_RETRY_DELAY] || undefined;
-
   return {
     httpStatusCode: response.statusCode,
-    ...(attempts && { attempts: Number(attempts) }),
-    ...(totalRetryDelay && { totalRetryDelay: Number(totalRetryDelay) }),
   };
 };
 
-export class TelegramApiError extends Error {
-  readonly failure: TelegramFailure;
+export const parseBody = async (output: HttpResponse): Promise<any> => {
+  const { statusCode, headers, body: streamBody } = output;
 
-  constructor(failure: TelegramFailure) {
-    super(failure.description || "Telegram API Error");
-    this.name = "TelegramApiError";
-    this.failure = failure;
-  }
-}
+  if (!isJsonResponse(headers["content-type"])) {
+    await destroyStream(streamBody);
 
-export const parseBody = async (response: HttpResponse): Promise<unknown> => {
-  const { headers, body: streamBody } = response;
-
-  const raw = await collectBodyString(streamBody);
-  if (!raw) return {};
-
-  const contentType = headers["content-type"] || "";
-
-  if (contentType && !contentType.includes("application/json")) {
-    const preview = raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
-    throw new TelegramApiError({
-      ok: false,
-      error_code: 500,
-      description: `Expected application/json but got "${contentType}". Body preview: ${preview}`,
+    throw new TelegramClientError({
+      statusCode: statusCode,
+      code: extractTelegramClientErrorCode(statusCode, "SDK.REQUEST_ERROR"),
+      message: "response content-type is not application/json",
     });
   }
 
   try {
-    return JSON.parse(raw);
+    const data = await collectBodyString(streamBody);
+    return data.length ? JSON.parse(data) : {};
   } catch (e) {
-    throw new TelegramApiError({
-      ok: false,
-      error_code: 500,
-      description: `Invalid JSON response. ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`,
+    await destroyStream(streamBody);
+
+    throw new TelegramClientError({
+      statusCode: statusCode,
+      code: extractTelegramClientErrorCode(statusCode, "SDK.REQUEST_ERROR"),
+      message: e instanceof Error ? e.message : "parse response body error",
     });
   }
 };
 
-const isTelegramShape = (x: unknown): x is { ok: boolean } => {
-  return typeof x === "object" && x !== null && "ok" in x && typeof (x as any).ok === "boolean";
-};
+export const parseErrorBody = async (output: HttpResponse): Promise<void> => {
+  const { statusCode, headers, body: streamBody } = output;
+  const DEFAULT_SDK_ERROR_CODE = extractTelegramClientErrorCode(statusCode);
 
-export const isSuccess = <T>(data: unknown): TelegramSuccess<T> => {
-  if (!isTelegramShape(data)) {
-    throw new TelegramApiError({
-      ok: false,
-      error_code: 500,
-      description: "Response is not a Telegram API (missing ok:boolean).",
+  if (!isJsonResponse(headers["content-type"])) {
+    await destroyStream(streamBody);
+
+    throw new TelegramClientError({
+      statusCode: statusCode,
+      code: DEFAULT_SDK_ERROR_CODE,
+      message: "response content-type is not application/json",
     });
   }
 
-  const content = data as TelegramResponse<T>;
+  try {
+    const data = await collectBodyString(streamBody);
+    const valid = validateFail(data);
 
-  if (!content.ok) {
-    throw new TelegramApiError({
-      ok: false,
-      error_code: content.error_code || 400,
-      description: content.description || "Telegram API returned ok=false",
-    });
-  }
-
-  return content;
-};
-
-export const _json = (obj: any): any => {
-  if (obj == null) return {};
-  if (Array.isArray(obj)) return obj.filter((d) => d != null).map(_json);
-  if (typeof obj === "object") {
-    const target: any = {};
-    for (const key of Object.keys(obj)) {
-      if (obj[key] == null) continue;
-      target[key] = _json(obj[key]);
+    if (valid.success) {
+      throw new TelegramClientError({
+        statusCode: statusCode,
+        code: extractTelegramClientErrorCode(valid.data.error_code),
+        message: valid.data.description,
+      });
     }
-    return target;
+
+    throw new TelegramClientError({
+      statusCode: statusCode,
+      code: DEFAULT_SDK_ERROR_CODE,
+      message: `[Invalid Response Payload] ${data.slice(0, 100)}...`,
+    });
+  } catch (error) {
+    await destroyStream(streamBody);
+
+    if (error instanceof TelegramClientError) {
+      throw error;
+    }
+    throw new TelegramClientError({
+      statusCode: statusCode,
+      code: DEFAULT_SDK_ERROR_CODE,
+      message: error instanceof Error ? error.message : "parse response body error",
+    });
   }
+};
+
+export const compact = <T>(obj: T): T => {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => compact(item)) as any;
+  }
+
+  if (typeof obj === "object" && obj !== null) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([_, value]) => value !== undefined) // undefined 필드 제거
+        .map(([key, value]) => [key, compact(value)]), // 내부 값 재귀 처리
+    ) as any;
+  }
+
   return obj;
+};
+
+const isJsonResponse = (contentType?: string): boolean => {
+  return /application\/json/gi.exec(contentType || "") ? true : false;
 };

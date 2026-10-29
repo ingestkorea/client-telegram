@@ -1,7 +1,6 @@
 import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
-import { parseBody, isSuccess, deserializeMetadata, _json } from "./constants.js";
 import {
+  TelegramClientResolvedConfig,
   RequestSerializer,
   ResponseDeserializer,
   SendMessageResult,
@@ -12,32 +11,29 @@ import {
   InlineKeyboard,
   InlineKeyboardButton,
 } from "../models/index.js";
-import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/index.js";
+import { SendMessageCommandInput, SendMessageCommandOutput } from "../commands/SendMessageCommand.js";
+import { deserializeMetadata, parseBody, parseErrorBody, compact } from "./constants.js";
 
 export const se_SendMessageCommand: RequestSerializer<SendMessageCommandInput, TelegramClientResolvedConfig> = async (
   input,
-  config
+  config,
 ) => {
   const { token, chatId } = config.credentials;
   const hostname = "api.telegram.org";
   const path = "/bot" + token + "/sendMessage";
   const headers = { "content-type": "application/json; charset=utf-8" };
   const body = JSON.stringify({
-    text: input.text,
-    chat_id: input.chatId != undefined ? input.chatId.toString() : chatId,
-    ...(input.parse_mode !== undefined && { parse_mode: input.parse_mode }),
-    ...(input.disable_web_page_preview !== undefined && { disable_web_page_preview: input.disable_web_page_preview }),
-    ...(input.disable_notification != undefined && { disable_notification: input.disable_notification }),
-    ...(input.protect_content != undefined && { protect_content: input.protect_content }),
-    ...(input.reply_markup != undefined && { reply_markup: input.reply_markup }),
+    ...input,
+    chat_id: input.chat_id ? input.chat_id.toString() : chatId,
   });
+
   return new HttpRequest({
     protocol: "https:",
     method: "POST",
-    hostname: hostname,
-    path: path,
-    headers: headers,
-    body: body,
+    hostname,
+    path,
+    headers,
+    body,
   });
 };
 
@@ -45,30 +41,31 @@ export const de_SendMessageCommand: ResponseDeserializer<
   SendMessageCommandOutput,
   TelegramClientResolvedConfig
 > = async (response, config) => {
-  const $metadata = deserializeMetadata(response);
+  if (response.statusCode >= 300) await parseErrorBody(response);
 
-  const raw = await parseBody(response);
-  const data = isSuccess<any>(raw);
-
-  const content: SendMessageResult = {
-    ok: true,
-    result: de_Message(data.result),
-    description: data.description,
-  };
+  const data = await parseBody(response);
+  const contents = de_SendMessageResult(data);
 
   return {
-    $metadata,
-    ..._json(content),
+    $metadata: deserializeMetadata(response),
+    ...compact(contents),
+  };
+};
+
+const de_SendMessageResult = (output: any): SendMessageResult => {
+  return {
+    ok: true,
+    result: de_Message(output.result),
   };
 };
 
 export const de_Message = (output: any): Message => {
   return {
     message_id: output.message_id,
-    from: output.from ? de_From(output.from) : undefined,
-    chat: output.chat ? de_Chat(output.chat) : undefined,
     date: output.date,
-    text: output.text,
+    from: de_From(output.from),
+    chat: de_Chat(output.chat),
+    text: output.text ? output.text : undefined,
     entities: output.entities ? de_EntityList(output.entities) : undefined,
     reply_markup: output.reply_markup ? de_InlineKeyboard(output.reply_markup) : undefined,
   };
@@ -76,22 +73,22 @@ export const de_Message = (output: any): Message => {
 
 const de_From = (output: any): From => {
   return {
-    id: output.id != null ? output.id : undefined,
-    is_bot: output.is_bot != null ? output.is_bot : undefined,
-    first_name: output.first_name != null ? output.first_name : undefined,
-    last_name: output.last_name != null ? output.last_name : undefined,
-    language_code: output.language_code != null ? output.language_code : undefined,
-    username: output.username != null ? output.username : undefined,
+    id: output.id,
+    is_bot: output.is_bot,
+    first_name: output.first_name,
+    last_name: output.last_name ? output.last_name : undefined,
+    language_code: output.language_code ? output.language_code : undefined,
+    username: output.username ? output.username : undefined,
   };
 };
 
 const de_Chat = (output: any): Chat => {
   return {
-    id: output.id != null ? output.id : undefined,
-    first_name: output.first_name != null ? output.first_name : undefined,
-    last_name: output.last_name != null ? output.last_name : undefined,
-    username: output.username != null ? output.username : undefined,
-    type: output.type != null ? output.type : undefined,
+    id: output.id,
+    type: output.type,
+    first_name: output.first_name ? output.first_name : undefined,
+    last_name: output.last_name ? output.last_name : undefined,
+    username: output.username ? output.username : undefined,
   };
 };
 

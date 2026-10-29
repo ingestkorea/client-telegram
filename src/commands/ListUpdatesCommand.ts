@@ -1,5 +1,5 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
+  TelegramClientResolvedConfig,
   TelegramCommand,
   ListUpdatesRequest,
   ListUpdatesResult,
@@ -23,8 +23,8 @@ export class ListUpdatesCommand extends TelegramCommand<
   constructor(input: ListUpdatesCommandInput) {
     super(input);
     this.input = {
-      limit: input.limit && input.limit <= 100 ? input.limit : 20,
-      timeout: input.timeout ? input.timeout : 0,
+      limit: Math.min(Math.max(input.limit || 20, 1), 100),
+      timeout: Math.min(Math.max(input.timeout || 0, 0), 30),
       ...(input.offset && { offset: input.offset }),
     };
     this.serializer = se_ListUpdatesCommand;

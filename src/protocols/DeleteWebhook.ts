@@ -1,8 +1,12 @@
 import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
-import { parseBody, isSuccess, deserializeMetadata, _json } from "./constants.js";
-import { RequestSerializer, ResponseDeserializer, DeleteWebhookResult } from "../models/index.js";
-import { DeleteWebhookCommandInput, DeleteWebhookCommandOutput } from "../commands/index.js";
+import {
+  TelegramClientResolvedConfig,
+  RequestSerializer,
+  ResponseDeserializer,
+  DeleteWebhookResult,
+} from "../models/index.js";
+import { DeleteWebhookCommandInput, DeleteWebhookCommandOutput } from "../commands/DeleteWebhookCommand.js";
+import { deserializeMetadata, parseBody, parseErrorBody, compact } from "./constants.js";
 
 export const se_DeleteWebhookCommand: RequestSerializer<
   DeleteWebhookCommandInput,
@@ -12,14 +16,15 @@ export const se_DeleteWebhookCommand: RequestSerializer<
   const hostname = "api.telegram.org";
   const path = "/bot" + token + "/deleteWebhook";
   const headers = { "content-type": "application/json; charset=utf-8" };
-  const body = JSON.stringify({ ...input });
+  const body = JSON.stringify(input);
+
   return new HttpRequest({
     protocol: "https:",
     method: "POST",
-    hostname: hostname,
-    path: path,
-    headers: headers,
-    body: body,
+    hostname,
+    path,
+    headers,
+    body,
   });
 };
 
@@ -27,19 +32,21 @@ export const de_DeleteWebhookCommand: ResponseDeserializer<
   DeleteWebhookCommandOutput,
   TelegramClientResolvedConfig
 > = async (response, config) => {
-  const $metadata = deserializeMetadata(response);
+  if (response.statusCode >= 300) await parseErrorBody(response);
 
-  const raw = await parseBody(response);
-  const data = isSuccess<any>(raw);
-
-  const content: DeleteWebhookResult = {
-    ok: true,
-    result: data.result,
-    description: data.description,
-  };
+  const data = await parseBody(response);
+  const contents = de_DeleteWebhookResult(data);
 
   return {
-    $metadata,
-    ..._json(content),
+    $metadata: deserializeMetadata(response),
+    ...compact(contents),
+  };
+};
+
+const de_DeleteWebhookResult = (output: any): DeleteWebhookResult => {
+  return {
+    ok: true,
+    result: output.result || true,
+    description: output.description ? output.description : undefined,
   };
 };

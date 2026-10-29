@@ -1,66 +1,56 @@
 import { NodeHttpHandler } from "@ingestkorea/util-http-handler";
-import { IngestkoreaError } from "@ingestkorea/util-error-handler";
-import { TelegramCommand, Middleware, Handler } from "./models/index.js";
+import {
+  TelegramClientConfig,
+  TelegramClientResolvedConfig,
+  TelegramCommand,
+  MetadataBearer,
+  Middleware,
+  Handler,
+  TelegramClientError,
+} from "./models/index.js";
 import { middlewareIngestkoreaMetadata, middlewareRetry } from "./middleware/index.js";
-
-type Credentials = {
-  token?: string;
-  chatId?: string | number;
-};
-type NodeHttpHandlerConfig = {
-  connectionTimeout?: number;
-  socketTimeout?: number;
-};
-
-type ResolvedCredentials = {
-  token: string;
-  chatId: string;
-};
-type ResolvedNodeHttpHandlerConfig = {
-  connectionTimeout: number;
-  socketTimeout: number;
-};
-
-export interface TelegramClientConfig extends NodeHttpHandlerConfig {
-  credentials?: Credentials;
-}
-export interface TelegramClientResolvedConfig extends ResolvedNodeHttpHandlerConfig {
-  credentials: ResolvedCredentials;
-}
 
 export class TelegramClient {
   config: TelegramClientResolvedConfig;
-  private httpHandler: NodeHttpHandler;
-  private handler: Handler;
+  private httpHandler;
 
   constructor(config: TelegramClientConfig) {
     this.config = resolveClientConfig(config);
-    this.httpHandler = new NodeHttpHandler({
-      connectionTimeout: this.config.connectionTimeout,
-      socketTimeout: this.config.socketTimeout,
-    });
-
-    const middlewares: Middleware[] = [middlewareIngestkoreaMetadata, middlewareRetry];
-    const requestHandler: Handler = async (input, context) => this.httpHandler.handle(input.request);
-
-    this.handler = composeMiddleware(middlewares, requestHandler);
+    this.httpHandler = new NodeHttpHandler(this.config.httpHandler);
   }
 
-  async send<I, O>(command: TelegramCommand<I, O, TelegramClientResolvedConfig>): Promise<O> {
-    const { input, serializer, deserializer } = command;
-    this.httpHandler.destroy();
+  async send<T extends object, P extends MetadataBearer>(
+    command: TelegramCommand<T, P, TelegramClientResolvedConfig>,
+  ): Promise<P> {
+    const middlewares: Middleware[] = [middlewareIngestkoreaMetadata, middlewareRetry];
+    const finalHandler: Handler<T, P> = async (input, context) => {
+      const { response } = await this.httpHandler.handle(input.request);
+      const output = await command.deserializer(response, context);
+      return { response, output };
+    };
+    const handler = composeMiddleware(middlewares, finalHandler);
+
     try {
-      const request = await serializer(input, this.config);
-      const { response } = await this.handler({ request }, this.config);
-      const output = await deserializer(response, this.config);
+      const request = await command.serializer(command.input, this.config);
+      const { output } = await handler({ request, input: command.input }, this.config);
       return output;
-    } catch (e) {
-      throw e;
+    } catch (error) {
+      if (error instanceof TelegramClientError) {
+        throw error;
+      }
+      throw new TelegramClientError({
+        statusCode: -1,
+        code: "SDK.UNKNOWN_ERROR",
+        message: error instanceof Error ? error.message : "unknown error",
+      });
     }
   }
 }
 
-const composeMiddleware = (middlewares: Middleware[], finalHandler: Handler): Handler => {
+const composeMiddleware = <I extends object, O extends MetadataBearer>(
+  middlewares: Middleware[],
+  finalHandler: Handler<I, O>,
+): Handler<I, O> => {
   const handler = middlewares.reduceRight((next, middleware) => {
     return middleware(next);
   }, finalHandler);
@@ -68,28 +58,35 @@ const composeMiddleware = (middlewares: Middleware[], finalHandler: Handler): Ha
 };
 
 const resolveClientConfig = (config: TelegramClientConfig): TelegramClientResolvedConfig => {
-  const { credentials, connectionTimeout, socketTimeout } = config;
-
   return {
-    credentials: resolveCredentials(credentials),
-    connectionTimeout: connectionTimeout || 3000,
-    socketTimeout: socketTimeout || 3000,
+    credentials: resolveCredentials(config.credentials),
+    httpHandler: {
+      connectionTimeout: config?.connectionTimeout ?? 3000,
+      socketTimeout: config?.socketTimeout ?? 5000,
+      keepAlive: config?.keepAlive ?? true,
+    },
   };
 };
 
-const resolveCredentials = (credentials?: Credentials): ResolvedCredentials => {
-  let lastError = new IngestkoreaError({
-    code: 400,
-    type: "Bad Request",
-    message: "Invalid Params",
-    description: "Invalid Client Credentials Config",
-  });
-  if (!credentials) throw lastError;
+const resolveCredentials = (
+  credentials: TelegramClientConfig["credentials"],
+): TelegramClientResolvedConfig["credentials"] => {
+  if (!credentials) {
+    throw new TelegramClientError({
+      statusCode: -1,
+      code: "SDK.AUTH_ERROR",
+      message: "Invalid Credentials",
+    });
+  }
 
   const { token, chatId } = credentials;
+
   if (!token || !chatId) {
-    lastError.error.description = "Token or ChatId undefined";
-    throw lastError;
+    throw new TelegramClientError({
+      statusCode: -1,
+      code: "SDK.AUTH_ERROR",
+      message: "Invalid Credentials: Token or ChatId undefined",
+    });
   }
 
   return {
@@ -100,12 +97,13 @@ const resolveCredentials = (credentials?: Credentials): ResolvedCredentials => {
 
 const resolveToken = (token: string) => {
   const [botNumber, botId] = token.split(":");
-  if (!botNumber || !botId)
-    throw new IngestkoreaError({
-      code: 400,
-      type: "Bad Request",
-      message: "Invalid Params",
-      description: "Invalid Token Structure",
+  if (!botNumber || !botId) {
+    throw new TelegramClientError({
+      statusCode: -1,
+      code: "SDK.AUTH_ERROR",
+      message: "Invalid Token Structure",
     });
+  }
+
   return [botNumber.replace(/[a-zA-Z+-\/_]+/i, ""), botId].join(":");
 };

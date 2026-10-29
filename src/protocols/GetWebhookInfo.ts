@@ -1,8 +1,13 @@
 import { HttpRequest } from "@ingestkorea/util-http-handler";
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
-import { parseBody, isSuccess, deserializeMetadata, _json } from "./constants.js";
-import { RequestSerializer, ResponseDeserializer, GetWebhookInfoResult, WebhookInfo } from "../models/index.js";
-import { GetWebhookInfoCommandInput, GetWebhookInfoCommandOutput } from "../commands/index.js";
+import {
+  TelegramClientResolvedConfig,
+  RequestSerializer,
+  ResponseDeserializer,
+  GetWebhookInfoResult,
+  WebhookInfo,
+} from "../models/index.js";
+import { GetWebhookInfoCommandInput, GetWebhookInfoCommandOutput } from "../commands/GetWebhookInfoCommand.js";
+import { deserializeMetadata, parseBody, parseErrorBody, compact } from "./constants.js";
 
 export const se_GetWebhookInfoCommand: RequestSerializer<
   GetWebhookInfoCommandInput,
@@ -12,12 +17,13 @@ export const se_GetWebhookInfoCommand: RequestSerializer<
   const hostname = "api.telegram.org";
   const path = "/bot" + token + "/getWebhookInfo";
   const headers = {};
+
   return new HttpRequest({
     protocol: "https:",
     method: "GET",
-    hostname: hostname,
-    path: path,
-    headers: headers,
+    hostname,
+    path,
+    headers,
   });
 };
 
@@ -25,26 +31,27 @@ export const de_GetWebhookInfoCommand: ResponseDeserializer<
   GetWebhookInfoCommandOutput,
   TelegramClientResolvedConfig
 > = async (response, config) => {
-  const $metadata = deserializeMetadata(response);
+  if (response.statusCode >= 300) await parseErrorBody(response);
 
-  const raw = await parseBody(response);
-  const data = isSuccess<any>(raw);
-
-  const content: GetWebhookInfoResult = {
-    ok: true,
-    result: de_WebhookInfo(data.result),
-    description: data.description,
-  };
+  const data = await parseBody(response);
+  const contents = de_GetWebhookInfoResult(data);
 
   return {
-    $metadata,
-    ..._json(content),
+    $metadata: deserializeMetadata(response),
+    ...compact(contents),
+  };
+};
+
+const de_GetWebhookInfoResult = (output: any): GetWebhookInfoResult => {
+  return {
+    ok: true,
+    result: output.result ? de_WebhookInfo(output.result) : {},
   };
 };
 
 const de_WebhookInfo = (output: any): WebhookInfo => {
   return {
-    url: output.url,
+    url: output.url ? output.url : undefined,
     has_custom_certificate: output.has_custom_certificate,
     pending_update_count: output.pending_update_count,
     max_connections: output.max_connections,

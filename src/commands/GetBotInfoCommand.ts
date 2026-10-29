@@ -1,5 +1,5 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
+  TelegramClientResolvedConfig,
   TelegramCommand,
   GetBotInfoRequest,
   GetBotInfoResult,

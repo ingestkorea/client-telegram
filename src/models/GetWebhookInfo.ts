@@ -1,8 +1,8 @@
-import { TelegramSuccess } from "./TelegramResponse.js";
+import { Success } from "./TelegramApi.js";
 
 export type GetWebhookInfoRequest = {};
 
-export type GetWebhookInfoResult = TelegramSuccess<WebhookInfo>;
+export type GetWebhookInfoResult = Success<WebhookInfo>;
 
 export type WebhookInfo = {
   url?: string;

@@ -1,4 +1,4 @@
-import { TelegramSuccess } from "./TelegramResponse.js";
+import { Success } from "./TelegramApi.js";
 
 export type CreateWebhookRequest = {
   url: string;
@@ -8,4 +8,6 @@ export type CreateWebhookRequest = {
   secret_token?: string;
 };
 
-export type CreateWebhookResult = TelegramSuccess<boolean>;
+export type CreateWebhookResult = Success<boolean> & {
+  description?: string;
+};

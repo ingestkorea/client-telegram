@@ -1,13 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "rootDir": "./src",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
     "outDir": "./dist-types",
     "declaration": true,
     "declarationDir": "./dist-types",
     "emitDeclarationOnly": true,
-    "removeComments": false,
-    "module": "ESNext",
-    "target": "ES2018",
-    "rootDir": "./src"
+    "removeComments": false
   }
 }

@@ -1,5 +1,5 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
+  TelegramClientResolvedConfig,
   TelegramCommand,
   DeleteWebhookRequest,
   DeleteWebhookResult,
@@ -23,7 +23,7 @@ export class DeleteWebhookCommand extends TelegramCommand<
   constructor(input: DeleteWebhookCommandInput) {
     super(input);
     this.input = {
-      drop_pending_updates: input.drop_pending_updates ? input.drop_pending_updates : false,
+      drop_pending_updates: input.drop_pending_updates ?? false,
     };
     this.serializer = se_DeleteWebhookCommand;
     this.deserializer = de_DeleteWebhookCommand;

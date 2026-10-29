@@ -2,7 +2,7 @@
 
 [![npm (scoped)](https://img.shields.io/npm/v/@ingestkorea/client-telegram?style=flat-square)](https://www.npmjs.com/package/@ingestkorea/client-telegram)
 [![NPM downloads](https://img.shields.io/npm/dm/@ingestkorea/client-telegram?style=flat-square)](https://www.npmjs.com/package/@ingestkorea/client-telegram)
-![Build Status](https://codebuild.ap-northeast-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiL3FHUm5hQWFuSFFHUTZ0bUx2WXI5Z2trcDdsM1F6ZE9rU21LN2lTTmxWQUZHY2k4cTU2Ri9rTWwybUFISkU0MWdCODJPS21TZXl1V3hNenp0S3B3Tll3PSIsIml2UGFyYW1ldGVyU3BlYyI6Ik5sUnlRRXRycGROTENsaEoiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)
+[![license](https://img.shields.io/github/license/ingestkorea/client-telegram?style=flat-square)](https://www.npmjs.com/package/@ingestkorea/client-telegram)
 
 ## Description
 
@@ -32,7 +32,7 @@ npm install @ingestkorea/client-telegram
 
 Node.js
 
-- Use TypeScript v5.x
+- Use TypeScript v6.x
 - Includes the TypeScript definitions for node.
 
   ```sh
@@ -55,7 +55,7 @@ The INGESTKOREA SDK - Telegram Client is modulized by `client` and `commands`.
 To send a request, you only need to import the TelegramClient and the commands you need, for example SendMessageCommand:
 
 ```ts
-import { TelegramClient, SendMessageCommand, SendMessageCommandInput } from "@ingestkorea/client-telegram";
+import { TelegramClient, SendMessageCommand } from "@ingestkorea/client-telegram";
 ```
 
 ### Usage
@@ -67,20 +67,21 @@ To send a request, you:
 - Call `send` operation on client with command object as input.
 
 ```ts
+import { TelegramClient, SendMessageCommand } from "@ingestkorea/client-telegram";
+
 // a client can be shared by different commands.
 const client = new TelegramClient({
   credentials: {
-    token: TOKEN, // required // 0123456789:ABCDEFG
-    chatId: CHAT_ID, // required // 9876543210 (string | number)
+    token: "TOKEN" // required "0123456789:ABCDEFG",
+    chatId: "CHAT_ID", // required // 9876543210
   },
 });
 
-const params: SendMessageCommandInput = {
-  text: "hello client-telegram : " + new Date().toISOString(), // required"
-  chatId: CHAT_ID, // optional // this chatId override TelegramClient config
-};
+const command = new SendMessageCommand({
+  text: "hello client-telegram", // required
+});
 
-const command = new SendMessageCommand(params);
+const output = await client.send(command);
 ```
 
 #### GetBotInfo
@@ -108,7 +109,7 @@ const command = new GetWebhookInfoCommand({});
 import { CreateWebhookCommand } from "@ingestkorea/client-telegram";
 
 const command = new CreateWebhookCommand({
-  url: "https://webhook.yourdomain.com", // required
+  url: "https://webhook.my-domain.com", // required
 });
 ```
 
@@ -128,7 +129,11 @@ const command = new DeleteWebhookCommand({});
 ```ts
 import { ListUpdatesCommand } from "@ingestkorea/client-telegram";
 
-const command = new ListUpdatesCommand({});
+const command = new ListUpdatesCommand({
+  limit: 20, // optional (default: 20)
+  timeout: 0, // optional (default: 0)
+  offset: 12345, // optional (update_id + 1)
+});
 ```
 
 #### Async/await
@@ -136,50 +141,25 @@ const command = new ListUpdatesCommand({});
 We recommend using `await` operator to wait for the promise returned by send operation as follows:
 
 ```ts
+import { TelegramClient, SendMessageCommand, TelegramClientError } from "@ingestkorea/client-telegram";
+
+// a client can be shared by different commands.
+const client = new TelegramClient({ ... });
+
 (async () => {
-  const start = process.hrtime.bigint();
   try {
-    // a client can be shared by different commands.
-    const data = await client.send(command);
-    console.dir(data, { depth: 5 });
+    const command = new SendMessageCommand({ ... });
+    const output = await client.send(command);
+    console.dir(output, { depth: 5 });
   } catch (err) {
-    console.log(err);
-  } finally {
-    let end = process.hrtime.bigint();
-    let duration = Number(end - start) / 1000000;
-    console.log("duration: " + duration + "ms");
+    if (err instanceof TelegramClientError) {
+      ...
+    } else {
+      ....
+    }
   }
 })();
 ```
-
-#### Promises
-
-- You can also use Promise chaining to execute send operation.
-- Promises can also be called using .catch() and .finally() as follows:
-
-```ts
-const start = process.hrtime.bigint();
-
-client
-  .send(command)
-  .then((data) => console.dir(data, { depth: 5 }))
-  .catch((err) => console.log(err))
-  .finally(() => {
-    let end = process.hrtime.bigint();
-    let duration = Number(end - start) / 1000000;
-    console.log("duration: " + duration + "ms");
-  });
-```
-
-## Getting Help
-
-We use the GitHub issues for tracking bugs and feature requests.
-
-If it turns out that you may have found a bug, please open an issue.
-
-## License
-
-This SDK is distributed under the [MIT License](https://opensource.org/licenses/MIT), see LICENSE for more information.
 
 ## Client Commands
 
@@ -188,7 +168,7 @@ This SDK is distributed under the [MIT License](https://opensource.org/licenses/
 | Arguments                | Type                 | Required | Description                                                                                   |
 | ------------------------ | -------------------- | -------- | --------------------------------------------------------------------------------------------- |
 | text                     | string               | true     | Describe the content of the message.                                                          |
-| chatId                   | string or number     | false    | This chatId overrides TelegramClient config.                                                  |
+| chat_id                  | string or number     | false    | This chatId overrides TelegramClient config.                                                  |
 | parse_mode               | ParseMode            | false    | Mode for parsing entities in the message text. (default: "MarkdownV2")                        |
 | disable_web_page_preview | boolean              | false    | Disable the preview when there is a link in the text field. (default: false)                  |
 | disable_notification     | boolean              | false    | Sends the message silently. Users will receive a notification with no sound. (default: false) |
@@ -200,10 +180,10 @@ This SDK is distributed under the [MIT License](https://opensource.org/licenses/
 | Arguments            | Type     | Required | Description                                                                                                                                                                                                                                               |
 | -------------------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | url                  | string   | true     | HTTPS URL to send updates to.                                                                                                                                                                                                                             |
-| max_connections      | number   | false    | The maximum allowed number of simultaneous HTTPS connections to the webhook for update delivery, 1-100. (default: 40)                                                                                                                                     |
+| max_connections      | number   | false    | The maximum allowed number of simultaneous HTTPS connections to the webhook for update delivery, 1-100. (default: 50)                                                                                                                                     |
 | allowed_updates      | string[] | false    | List of the update types you want your bot to receive. (default: ["message"])                                                                                                                                                                             |
 | drop_pending_updates | boolean  | false    | Pass True to drop all pending updates. (default: false)                                                                                                                                                                                                   |
-| secret_token         | boolean  | false    | A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, \_ and - are allowed. The header is useful to ensure that the request comes from a webhook set by you. |
+| secret_token         | string   | false    | A secret token to be sent in a header “X-Telegram-Bot-Api-Secret-Token” in every webhook request, 1-256 characters. Only characters A-Z, a-z, 0-9, \_ and - are allowed. The header is useful to ensure that the request comes from a webhook set by you. |
 
 ### DeleteWebhook
 
@@ -239,3 +219,13 @@ This SDK is distributed under the [MIT License](https://opensource.org/licenses/
 | --------- | ------ | -------- | ------------------------------------------------- |
 | text      | string | true     | Label text on the button.                         |
 | url       | string | true     | HTTP URL to be opened when the button is pressed. |
+
+## Getting Help
+
+We use the GitHub issues for tracking bugs and feature requests.
+
+If it turns out that you may have found a bug, please open an issue.
+
+## License
+
+This SDK is distributed under the [MIT License](https://opensource.org/licenses/MIT), see LICENSE for more information.

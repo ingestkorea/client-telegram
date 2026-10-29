@@ -1,11 +1,12 @@
-import { TelegramClientResolvedConfig } from "../TelegramClient.js";
 import {
+  TelegramClientResolvedConfig,
   TelegramCommand,
   CreateWebhookRequest,
   CreateWebhookResult,
   MetadataBearer,
   RequestSerializer,
   ResponseDeserializer,
+  TelegramClientError,
 } from "../models/index.js";
 import { se_CreateWebhookCommand, de_CreateWebhookCommand } from "../protocols/index.js";
 
@@ -22,11 +23,17 @@ export class CreateWebhookCommand extends TelegramCommand<
   deserializer: ResponseDeserializer<CreateWebhookCommandOutput, TelegramClientResolvedConfig>;
   constructor(input: CreateWebhookCommandInput) {
     super(input);
-    if (!input.url) throw new Error("url undefined. Use an DeleteWebhookCommand to remove webhook integration.");
+    if (!input.url) {
+      throw new TelegramClientError({
+        statusCode: -1,
+        code: "SDK.GENERAL_ERROR",
+        message: "URL undefined. Use an DeleteWebhookCommand to remove webhook integration.",
+      });
+    }
 
     this.input = {
       url: input.url,
-      max_connections: input.max_connections && input.max_connections <= 100 ? input.max_connections : 40,
+      max_connections: Math.min(Math.max(input.max_connections || 50, 1), 100),
       allowed_updates: input.allowed_updates && input.allowed_updates.length ? input.allowed_updates : ["message"],
       drop_pending_updates: input.drop_pending_updates ? input.drop_pending_updates : false,
       ...(input.secret_token && { secret_token: input.secret_token }),
